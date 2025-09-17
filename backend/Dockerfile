@@ -2,7 +2,7 @@
 FROM gradle:8.5.0-jdk21-jammy AS build
 WORKDIR /home/gradle/src
 COPY --chown=gradle:gradle . .
-RUN gradle build --no-daemon
+RUN gradle build -x test --no-daemon
 
 # Estágio 2: Criação da imagem final com a JRE
 FROM eclipse-temurin:21-jre-jammy

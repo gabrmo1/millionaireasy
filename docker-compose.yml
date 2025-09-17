@@ -21,7 +21,7 @@ services:
     container_name: millionaireasy-backend
     # Constrói a imagem a partir do Dockerfile na pasta do backend
     build:
-      context: ./backend_millionaireasy
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -40,7 +40,7 @@ services:
     container_name: millionaireasy-frontend
     # Constrói a imagem a partir do Dockerfile na pasta do frontend
     build:
-      context: ./frontend_millionaireasy
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "5173:80"
