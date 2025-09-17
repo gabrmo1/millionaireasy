@@ -18,3 +18,7 @@ export const updateOperacao = async (id: string, operacao: CriarOperacaoDTO): Pr
 export const deleteOperacao = async (id: string): Promise<void> => {
     await api.delete(`/v1/operacoes/${id}`);
 };
+
+export const createOperacao = async (operacao: CriarOperacaoDTO): Promise<void> => {
+    await api.post('/v1/operacoes/criar', operacao);
+};

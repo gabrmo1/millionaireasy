@@ -3,7 +3,7 @@ import {
     TextField, Checkbox, FormControlLabel, FormControl,
     InputLabel, Select, MenuItem, FormHelperText
 } from '@mui/material';
-import type { FormField, BaseEntity } from '../../../types/common';
+import type { FormField } from '../../../types/common';
 import EntitySelectorField from './EntitySelectorField';
 
 interface FormFieldRendererProps {

@@ -1,26 +1,35 @@
 import React, { useCallback } from 'react';
 import GenericFormPage from '../../components/common/forms/GenericFormPage';
 import { operacaoFormConfig } from './operacaoFormConfig';
-import api from '../../services/api';
-import type {Operacao} from '../../types/operacao';
-import {getOperacaoById, updateOperacao} from "../../services/operacaoService.ts";
+import { getOperacaoById, updateOperacao } from "../../services/operacaoService.ts";
+import { createOperacao as createOperacaoService } from "../../services/operacaoService.ts"; // Supondo que você crie esta função no service
+import type { Operacao, CriarOperacaoDTO } from '../../types/operacao';
 
 const OperacaoForm: React.FC = () => {
 
-    const createOperacao = useCallback(async (data: Record<string, any>) => {
-        const payload = {
-            ...data,
+    // Função para criar a operação
+    const handleCreate = useCallback(async (formData: Record<string, any>) => {
+        const payload: CriarOperacaoDTO = {
+            par: formData.par,
+            intervalo: formData.intervalo,
+            idOperador: formData.idOperador,
+            idEstrategia: formData.idEstrategia,
             dataInicio: new Date().toISOString(),
             dataFim: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         };
-        await api.post('/v1/operacoes/criar', payload);
+        // Idealmente, a chamada da API também estaria em 'operacaoService.ts'
+        await createOperacaoService(payload);
     }, []);
 
+    // Função para atualizar a operação
     const handleUpdate = useCallback(async (id: string, formData: Record<string, any>) => {
-        const payload = {
-            ...formData,
-            dataInicio: new Date().toISOString(),
-            dataFim: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+        const payload: CriarOperacaoDTO = {
+            par: formData.par,
+            intervalo: formData.intervalo,
+            idOperador: formData.idOperador,
+            idEstrategia: formData.idEstrategia,
+            dataInicio: formData.dataInicio || new Date().toISOString(),
+            dataFim: formData.dataFim || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         };
         await updateOperacao(id, payload);
     }, []);
@@ -28,9 +37,9 @@ const OperacaoForm: React.FC = () => {
     return (
         <GenericFormPage<Operacao>
             title="Operações - Criar"
-            description="Uma Operação é a execução do bot. Ela une um Par de Moedas, um Operador (suas chaves) e as Configurações de Análise, Compra e Venda para automatizar sua estratégia."
+            description="Uma Operação é a execução do bot. Ela une um Par de Moedas, um Operador (suas chaves) e uma Estratégia para automatizar o trading."
             formConfig={operacaoFormConfig}
-            onSubmit={createOperacao}
+            onSubmit={handleCreate}
             onUpdate={handleUpdate}
             fetcher={getOperacaoById}
             backRoute="/operacoes"

@@ -38,7 +38,7 @@ const Welcome: React.FC = () => {
             <Typography variant="h5" component="h2" gutterBottom>
                 Painel de Controle
             </Typography>
-            <DynamicDataGrid initialRows={myRows} gridColumns={myColumns} />
+            <DynamicDataGrid initialRows={[...myRows]} gridColumns={myColumns} />
         </Paper>
     );
 };
