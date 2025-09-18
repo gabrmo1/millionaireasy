@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Paper, Typography, Box, Button, CircularProgress, Alert, Snackbar, Divider, Collapse } from '@mui/material';
+import { Paper, Typography, Box, Button, CircularProgress, Alert, Snackbar, Divider, Collapse, TextField } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
@@ -11,7 +11,6 @@ import { estrategiaFormConfig } from './estrategiaConfig';
 import FormFieldRenderer from '../../components/common/forms/FormFieldRenderer';
 import CondicaoCompraForm from './CondicaoCompraForm';
 import CondicaoVendaForm from './CondicaoVendaForm';
-
 
 const getInitialState = (): Omit<Estrategia, 'id'> => ({
     nome: '',
@@ -58,6 +57,31 @@ const EstrategiaForm: React.FC = () => {
     const handleMainChange = (name: string, value: any) => {
         setEstrategia(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string) => {
+        const numericValue = value ? Number(value) : undefined;
+
+        setEstrategia(prev => {
+            const newState = { ...prev, [name]: numericValue };
+            if (name === 'valorOperacaoFixo' && numericValue !== undefined) {
+                newState.percentualValorOperacao = undefined;
+            } else if (name === 'percentualValorOperacao' && numericValue !== undefined) {
+                newState.valorOperacaoFixo = undefined;
+            }
+            return newState;
+        });
+    };
+
+    const handlePercentChange = (name: 'percentualValorOperacao', value: string) => {
+        const numValue = Number(value);
+        let finalValue: number | undefined = numValue;
+
+        if (numValue < 0) finalValue = 0;
+        if (numValue > 100) finalValue = 100;
+
+        handleValorOperacaoChange(name, String(finalValue));
+    };
+
 
     // --- Condições de Compra ---
     const addCondicaoCompra = () => {
@@ -164,6 +188,37 @@ const EstrategiaForm: React.FC = () => {
                             <CondicaoCompraForm key={condicao.clientId} index={index} condicao={condicao} onUpdate={updateCondicaoCompra} onRemove={removeCondicaoCompra} />
                         ))}
                         {estrategia.condicoesCompra.length === 0 && <Alert severity="info">Nenhuma condição de compra adicionada.</Alert>}
+
+                        <Divider sx={{ my: 3 }} />
+
+                        <Box>
+                            <Typography variant="h6" sx={{ mb: 2 }}>Valor da Operação</Typography>
+                            <Grid container spacing={2}>
+                                <Grid item xs={6}>
+                                    <TextField
+                                        label="Valor Fixo Operação (Ex: 10.50)"
+                                        type="number"
+                                        size="small"
+                                        fullWidth
+                                        value={estrategia.valorOperacaoFixo ?? ''}
+                                        onChange={(e) => handleValorOperacaoChange('valorOperacaoFixo', e.target.value)}
+                                        disabled={estrategia.percentualValorOperacao !== undefined && estrategia.percentualValorOperacao !== null}
+                                        inputProps={{ min: 0 }}
+                                    />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <TextField
+                                        label="% do Saldo na Operação"
+                                        type="number"
+                                        size="small"
+                                        fullWidth
+                                        value={estrategia.percentualValorOperacao ?? ''}
+                                        onChange={(e) => handlePercentChange('percentualValorOperacao', e.target.value)}
+                                        disabled={estrategia.valorOperacaoFixo !== undefined && estrategia.valorOperacaoFixo !== null}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
 
                         <Divider sx={{ my: 3 }} />
 

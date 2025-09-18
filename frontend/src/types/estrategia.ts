@@ -6,8 +6,6 @@ export interface CondicaoCompraDTO {
     tipoIndicador: TipoIndicador;
     valorIndicador?: number;
     posicaoFaixa?: PosicaoFaixasCompraVenda;
-    valorOperacaoFixo?: number;
-    percentualValorOperacao?: number;
 }
 
 export interface CondicaoVendaDTO {
@@ -37,6 +35,8 @@ export interface Estrategia {
     utilizarSma: boolean;
     periodoSma?: number;
     realizarLeituraVolume: boolean;
+    valorOperacaoFixo?: number;
+    percentualValorOperacao?: number;
     condicoesCompra: CondicaoCompraDTO[];
     condicoesVenda: CondicaoVendaDTO[];
 }

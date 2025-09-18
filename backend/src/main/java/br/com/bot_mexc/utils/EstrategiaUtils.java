@@ -34,6 +34,8 @@ public class EstrategiaUtils {
         entidade.setUtilizarSma(dto.utilizarSma());
         entidade.setPeriodoSma(dto.periodoSma());
         entidade.setRealizarLeituraVolume(dto.realizarLeituraVolume());
+        entidade.setValorOperacaoFixo(dto.valorOperacaoFixo());
+        entidade.setPercentualValorOperacao(dto.percentualValorOperacao());
     }
 
     public static EstrategiaDTO converterEntidadeParaDto(Estrategia entidade) {
@@ -59,6 +61,8 @@ public class EstrategiaUtils {
                 .utilizarSma(entidade.getUtilizarSma())
                 .periodoSma(entidade.getPeriodoSma())
                 .realizarLeituraVolume(entidade.getRealizarLeituraVolume())
+                .valorOperacaoFixo(entidade.getValorOperacaoFixo())
+                .percentualValorOperacao(entidade.getPercentualValorOperacao())
                 .condicoesCompra(
                         !CollectionUtils.isEmpty(entidade.getCondicoesCompra()) ?
                                 entidade.getCondicoesCompra().stream().map(CondicaoCompraUtils::converterEntidadeParaDto).collect(Collectors.toList()) :

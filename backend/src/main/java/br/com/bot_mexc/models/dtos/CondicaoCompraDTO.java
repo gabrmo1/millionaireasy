@@ -12,8 +12,6 @@ public record CondicaoCompraDTO(
         String idEstrategia,
         TipoIndicador tipoIndicador,
         BigDecimal valorIndicador,
-        PosicaoFaixasCompraVenda posicaoFaixa,
-        BigDecimal valorOperacaoFixo,
-        BigDecimal percentualValorOperacao
+        PosicaoFaixasCompraVenda posicaoFaixa
 ) {
 }

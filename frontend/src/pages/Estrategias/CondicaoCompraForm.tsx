@@ -16,14 +16,6 @@ const CondicaoCompraForm: React.FC<CondicaoCompraFormProps> = ({ condicao, index
 
     const handleChange = (name: string, value: any) => {
         const updatedCondicao = { ...condicao, [name]: value };
-
-        // Lógica de exclusividade mútua
-        if (name === 'valorOperacaoFixo' && value) {
-            updatedCondicao.percentualValorOperacao = undefined;
-        } else if (name === 'percentualValorOperacao' && value) {
-            updatedCondicao.valorOperacaoFixo = undefined;
-        }
-
         onUpdate(index, updatedCondicao);
     };
 
@@ -74,28 +66,6 @@ const CondicaoCompraForm: React.FC<CondicaoCompraFormProps> = ({ condicao, index
                         </Grid>
                     </>
                 )}
-                <Grid item xs={6}>
-                    <TextField
-                        label="Valor Fixo Operação"
-                        type="number"
-                        size="small"
-                        fullWidth
-                        value={condicao.valorOperacaoFixo || ''}
-                        onChange={(e) => handleChange('valorOperacaoFixo', e.target.value)}
-                        disabled={!!condicao.percentualValorOperacao}
-                    />
-                </Grid>
-                <Grid item xs={6}>
-                    <TextField
-                        label="% do Saldo na Operação"
-                        type="number"
-                        size="small"
-                        fullWidth
-                        value={condicao.percentualValorOperacao || ''}
-                        onChange={(e) => handleChange('percentualValorOperacao', e.target.value)}
-                        disabled={!!condicao.valorOperacaoFixo}
-                    />
-                </Grid>
             </Grid>
         </Paper>
     );

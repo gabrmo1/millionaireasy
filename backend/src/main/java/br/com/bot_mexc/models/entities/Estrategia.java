@@ -3,6 +3,7 @@ package br.com.bot_mexc.models.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 @Data
@@ -23,6 +24,13 @@ public class Estrategia extends BaseEntity {
 
     @OneToMany(mappedBy = "estrategia", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<CondicaoVenda> condicoesVenda;
+
+    /*---------- Valores de Operação ----------*/
+    @Column(name = "valor_operacao_fixo")
+    private BigDecimal valorOperacaoFixo;
+
+    @Column(name = "percentual_valor_operacao")
+    private BigDecimal percentualValorOperacao;
 
     /*---------- RSI curto ----------*/
     @Column(name = "utilizar_rsi_curto", nullable = false)

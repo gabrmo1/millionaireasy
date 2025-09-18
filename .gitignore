@@ -1,3 +1,10 @@
 .idea
+.idea/*
 gemini_temp/backend
 gemini_temp/frontend
+backend/.idea
+backend/.gradle
+backend/build
+frontend/.idea
+frontend/node_modules
+frontend/package-lock.json

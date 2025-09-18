@@ -22,7 +22,7 @@ import type { BaseEntity } from '../../types/common';
 interface DynamicDataGridProps<T extends GridValidRowModel> {
     initialRows: T[];
     gridColumns: GridColDef<T>[];
-    onEdit?: (id: GridRowId) => void; // <-- Nova propriedade
+    onEdit?: (id: GridRowId) => void;
     onDelete?: (id: GridRowId) => Promise<void>;
 }
 
@@ -92,6 +92,7 @@ export default function DynamicDataGrid<T extends BaseEntity>(props: DynamicData
             type: 'actions',
             headerName: 'Ações',
             width: 100,
+            resizable: false,
             cellClassName: 'actions',
             getActions: ({ id, row }) => {
                 const isInEditMode = rowModesModel[id]?.mode === GridRowModes.Edit;
@@ -149,7 +150,6 @@ export default function DynamicDataGrid<T extends BaseEntity>(props: DynamicData
             <DataGrid<T>
                 rows={rows}
                 columns={columnsWithActions}
-                density="compact"
                 editMode="row"
                 rowModesModel={rowModesModel}
                 onRowModesModelChange={handleRowModesModelChange}
@@ -157,6 +157,7 @@ export default function DynamicDataGrid<T extends BaseEntity>(props: DynamicData
                 processRowUpdate={processRowUpdate}
                 initialState={{
                     pagination: { paginationModel: { pageSize: 20 } },
+                    density: 'compact',
                 }}
                 pageSizeOptions={[20, 50, 100]}
                 disableRowSelectionOnClick
@@ -166,10 +167,11 @@ export default function DynamicDataGrid<T extends BaseEntity>(props: DynamicData
                 }}
                 slotProps={{
                     toolbar: {
+                        showQuickFilter: true,
                         sx: {
                             backgroundColor: 'lightslategray',
                             color: (theme) => theme.palette.primary.contrastText,
-                            '& .MuiButton-root, & .MuiSvgIcon-root': { // Garante que botões e ícones fiquem brancos
+                            '& .MuiButton-root, & .MuiSvgIcon-root, & .MuiInputBase-root': {
                                 color: (theme) => theme.palette.primary.contrastText,
                             },
                         },

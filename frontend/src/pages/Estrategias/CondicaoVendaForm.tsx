@@ -18,6 +18,17 @@ const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, index, 
         onUpdate(index, { ...condicao, [name]: value });
     };
 
+    const handlePercentChange = (name: string, value: string) => {
+        const numValue = Number(value);
+        if (numValue < 0) {
+            onUpdate(index, { ...condicao, [name]: 0 });
+        } else if (numValue > 100) {
+            onUpdate(index, { ...condicao, [name]: 100 });
+        } else {
+            onUpdate(index, { ...condicao, [name]: numValue });
+        }
+    };
+
     return (
         <Paper elevation={3} sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -72,7 +83,7 @@ const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, index, 
                         size="small"
                         fullWidth
                         value={condicao.quantiaSobreLucro || ''}
-                        onChange={(e) => handleChange('quantiaSobreLucro', e.target.value)}
+                        onChange={(e) => handlePercentChange('quantiaSobreLucro', e.target.value)}
                     />
                 </Grid>
             </Grid>

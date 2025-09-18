@@ -14,8 +14,6 @@ public class CondicaoCompraUtils {
                 .tipoIndicador(dto.tipoIndicador())
                 .valorIndicador(dto.valorIndicador())
                 .posicaoFaixa(dto.posicaoFaixa())
-                .valorOperacaoFixo(dto.valorOperacaoFixo())
-                .percentualValorOperacao(dto.percentualValorOperacao())
                 .build();
     }
 
@@ -26,8 +24,6 @@ public class CondicaoCompraUtils {
                 .tipoIndicador(entidade.getTipoIndicador())
                 .valorIndicador(entidade.getValorIndicador())
                 .posicaoFaixa(entidade.getPosicaoFaixa())
-                .valorOperacaoFixo(entidade.getValorOperacaoFixo())
-                .percentualValorOperacao(entidade.getPercentualValorOperacao())
                 .build();
     }
 }

@@ -32,9 +32,4 @@ public class CondicaoCompra extends BaseEntity {
     @Column(name = "posicao_faixa")
     private PosicaoFaixasCompraVenda posicaoFaixa;
 
-    @Column(name = "valor_operacao_fixo")
-    private BigDecimal valorOperacaoFixo;
-
-    @Column(name = "percentual_valor_operacao")
-    private BigDecimal percentualValorOperacao;
 }
