@@ -14,7 +14,6 @@ export interface CondicaoVendaDTO {
     tipoIndicador: TipoIndicador;
     valorIndicador?: number;
     posicaoFaixa?: PosicaoFaixasCompraVenda;
-    quantiaSobreLucro?: number;
 }
 
 export interface Estrategia {
@@ -37,6 +36,8 @@ export interface Estrategia {
     realizarLeituraVolume: boolean;
     valorOperacaoFixo?: number;
     percentualValorOperacao?: number;
+    vendaApenasPorLucro?: boolean;
+    percentualLucro?: number;
     condicoesCompra: CondicaoCompraDTO[];
     condicoesVenda: CondicaoVendaDTO[];
 }

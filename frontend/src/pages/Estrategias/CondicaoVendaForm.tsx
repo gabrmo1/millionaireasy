@@ -58,17 +58,6 @@ const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, estrate
         }
     };
 
-    const handlePercentChange = (name: string, value: string) => {
-        const numValue = Number(value);
-        if (numValue < 0) {
-            onUpdate(index, { ...condicao, [name]: 0 });
-        } else if (numValue > 100) {
-            onUpdate(index, { ...condicao, [name]: 100 });
-        } else {
-            onUpdate(index, { ...condicao, [name]: numValue });
-        }
-    };
-
     const tipoIndicadorOptions = getTipoIndicadorOptions();
     const posicaoFaixasOptions = getPosicaoFaixasOptions();
 
@@ -129,16 +118,6 @@ const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, estrate
                         </Grid>
                     </>
                 )}
-                <Grid item xs={12}>
-                    <TextField
-                        label="Vender com Lucro de (%)"
-                        type="number"
-                        size="small"
-                        fullWidth
-                        value={condicao.quantiaSobreLucro || ''}
-                        onChange={(e) => handlePercentChange('quantiaSobreLucro', e.target.value)}
-                    />
-                </Grid>
             </Grid>
         </Paper>
     );

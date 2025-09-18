@@ -32,6 +32,4 @@ public class CondicaoVenda extends BaseEntity {
     @Column(name = "posicao_faixa")
     private PosicaoFaixasCompraVenda posicaoFaixa;
 
-    @Column(name = "quantia_sobre_lucro")
-    private BigDecimal quantiaSobreLucro;
 }

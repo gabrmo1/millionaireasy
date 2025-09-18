@@ -1,3 +1,4 @@
+// backend/src/main/java/br/com/bot_mexc/utils/EstrategiaUtils.java
 package br.com.bot_mexc.utils;
 
 import br.com.bot_mexc.models.dtos.EstrategiaDTO;
@@ -36,6 +37,8 @@ public class EstrategiaUtils {
         entidade.setRealizarLeituraVolume(dto.realizarLeituraVolume());
         entidade.setValorOperacaoFixo(dto.valorOperacaoFixo());
         entidade.setPercentualValorOperacao(dto.percentualValorOperacao());
+        entidade.setVendaApenasPorLucro(dto.vendaApenasPorLucro());
+        entidade.setPercentualLucro(dto.percentualLucro());
     }
 
     public static EstrategiaDTO converterEntidadeParaDto(Estrategia entidade) {
@@ -63,6 +66,8 @@ public class EstrategiaUtils {
                 .realizarLeituraVolume(entidade.getRealizarLeituraVolume())
                 .valorOperacaoFixo(entidade.getValorOperacaoFixo())
                 .percentualValorOperacao(entidade.getPercentualValorOperacao())
+                .vendaApenasPorLucro(entidade.getVendaApenasPorLucro())
+                .percentualLucro(entidade.getPercentualLucro())
                 .condicoesCompra(
                         !CollectionUtils.isEmpty(entidade.getCondicoesCompra()) ?
                                 entidade.getCondicoesCompra().stream().map(CondicaoCompraUtils::converterEntidadeParaDto).collect(Collectors.toList()) :

@@ -32,6 +32,13 @@ public class Estrategia extends BaseEntity {
     @Column(name = "percentual_valor_operacao")
     private BigDecimal percentualValorOperacao;
 
+    /*---------- Venda por Lucro ----------*/
+    @Column(name = "venda_apenas_por_lucro")
+    private Boolean vendaApenasPorLucro;
+
+    @Column(name = "percentual_lucro")
+    private BigDecimal percentualLucro;
+
     /*---------- RSI curto ----------*/
     @Column(name = "utilizar_rsi_curto", nullable = false)
     Boolean utilizarRsiCurto;

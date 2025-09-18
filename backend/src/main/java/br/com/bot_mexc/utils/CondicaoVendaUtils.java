@@ -14,7 +14,6 @@ public class CondicaoVendaUtils {
                 .tipoIndicador(dto.tipoIndicador())
                 .valorIndicador(dto.valorIndicador())
                 .posicaoFaixa(dto.posicaoFaixa())
-                .quantiaSobreLucro(dto.quantiaSobreLucro())
                 .build();
     }
 
@@ -25,7 +24,6 @@ public class CondicaoVendaUtils {
                 .tipoIndicador(entidade.getTipoIndicador())
                 .valorIndicador(entidade.getValorIndicador())
                 .posicaoFaixa(entidade.getPosicaoFaixa())
-                .quantiaSobreLucro(entidade.getQuantiaSobreLucro())
                 .build();
     }
 }

@@ -35,10 +35,19 @@ public record EstrategiaDTO(
         BigDecimal valorOperacaoFixo,
         @Positive(message = "O percentual da operação deve ser positivo.")
         BigDecimal percentualValorOperacao,
+        Boolean vendaApenasPorLucro,
+        BigDecimal percentualLucro,
         List<CondicaoCompraDTO> condicoesCompra,
         List<CondicaoVendaDTO> condicoesVenda
 ) {
     public EstrategiaDTO {
+        // Validação dos Parâmetros de Compra
+        if (!CollectionUtils.isEmpty(condicoesCompra)) {
+            if (Objects.isNull(valorOperacaoFixo) && Objects.isNull(percentualValorOperacao)) {
+                throw new ValidationException("Os parâmetros de compra (Valor Fixo ou Percentual) são obrigatórios quando existem condições de compra.");
+            }
+        }
+
         if (!CollectionUtils.isEmpty(condicoesCompra)) {
             for (var condicao : condicoesCompra) {
                 if (!isIndicatorEnabled(condicao.tipoIndicador(), utilizarRsiCurto, utilizarRsiMedio, utilizarRsiLongo, utilizarRsiEstocastico, utilizarEma, utilizarSma, realizarLeituraVolume)) {
@@ -58,6 +67,16 @@ public record EstrategiaDTO(
                 if (isRsiIndicator(condicao.tipoIndicador())) {
                     validarValorRsi(condicao.valorIndicador());
                 }
+            }
+        }
+
+        // Validação da Venda por Lucro
+        if (Boolean.TRUE.equals(vendaApenasPorLucro)) {
+            if (Objects.isNull(percentualLucro)) {
+                throw new ValidationException("O percentual de lucro é obrigatório quando a venda por lucro está ativada.");
+            }
+            if (percentualLucro.compareTo(BigDecimal.ZERO) < 0 || percentualLucro.compareTo(new BigDecimal("9999")) > 0) {
+                throw new ValidationException("O percentual de lucro deve estar entre 0 e 9999.");
             }
         }
     }
