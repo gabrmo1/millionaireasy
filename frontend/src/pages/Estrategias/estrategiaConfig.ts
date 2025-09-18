@@ -13,8 +13,7 @@ export const estrategiaGridColumns: GridColDef[] = [
 
 export const estrategiaFormConfig: FormField<any>[] = [
     { name: 'nome', label: 'Nome da Estratégia', type: 'text', required: true, gridSpan: 4, validation: {
-            maxLength: { value: 50, message: 'O nome não pode exceder 50 caracteres.' },
-            required: "O nome da estratégia é obrigatório."
+            maxLength: { value: 50, message: 'O nome não pode exceder 50 caracteres.' }
         }
     },
     { name: 'utilizarRsiCurto', label: 'Utilizar RSI Curto', type: 'checkbox', defaultValue: false, gridSpan: 12 },
