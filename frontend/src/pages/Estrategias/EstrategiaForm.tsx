@@ -60,7 +60,7 @@ const EstrategiaForm: React.FC = () => {
         setEstrategia(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string) => {
+    const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string | undefined) => {
         const numericValue = value ? Number(value) : undefined;
 
         setEstrategia(prev => {
@@ -75,6 +75,11 @@ const EstrategiaForm: React.FC = () => {
     };
 
     const handlePercentChange = (name: 'percentualValorOperacao', value: string) => {
+        if (value === '') {
+            handleValorOperacaoChange(name, undefined);
+            return;
+        }
+
         const numValue = Number(value);
         let finalValue: number | undefined = numValue;
 
