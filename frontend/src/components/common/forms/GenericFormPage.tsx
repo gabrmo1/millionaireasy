@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { alpha } from '@mui/material/styles'
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Paper, Typography, Box, Button, TextField, Checkbox,
@@ -252,16 +253,21 @@ export default function GenericFormPage<T extends BaseEntity>({
     return (
         <>
             <Paper
-                elevation={2}
+                elevation={4}
                 sx={{
                     height: 'calc(100vh - 112px)',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
+                    // Efeito Glassmorphism Ajustado
+                    backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.6), // Mais sutil
+                    backdropFilter: 'blur(12px)',
+                    borderRadius: '16px',
+                    border: (theme) => `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
                 }}
             >
                 {/* Cabeçalho do Formulário */}
-                <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: (theme) => theme.palette.action.hover }}>
+                <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
                     <Typography variant="h5" component="h2">
                         {isEditMode ? `${title} - Editar` : title}
                     </Typography>
@@ -270,7 +276,7 @@ export default function GenericFormPage<T extends BaseEntity>({
                 {/* Caixa de Descrição (Tip/Note) */}
                 <Box sx={{ overflow: 'auto', p: 1, borderBottom: 1, borderColor: 'divider' }}>
                     {description && (
-                        <Alert severity="info">
+                        <Alert severity="info" sx={{ backgroundColor: 'rgba(2, 136, 209, 0.1)', color: 'info.dark' }}>
                             {description}
                         </Alert>
                     )}
@@ -313,7 +319,7 @@ export default function GenericFormPage<T extends BaseEntity>({
                     </Box>
 
                     {/* Rodapé Fixo com Botões */}
-                    <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+                    <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
                         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                             <Button type="submit" variant="contained" color="primary">
                                 Salvar

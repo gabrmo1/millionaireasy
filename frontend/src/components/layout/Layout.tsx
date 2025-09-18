@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { alpha } from '@mui/material/styles'
 import { Box, Toolbar, Drawer, List, ListItemButton, ListItemText, Divider, Collapse, ListItemIcon } from '@mui/material';
 import { Link } from 'react-router-dom';
 import NavBar from './NavBar';
@@ -119,7 +120,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Drawer>
             <Box
                 component="main"
-                sx={{ flexGrow: 1, p: 2, width: { sm: `calc(100% - ${drawerWidth}px)` } }}
+                sx={{
+                    flexGrow: 1,
+                    p: 2,
+                    width: { sm: `calc(100% - ${drawerWidth}px)` },
+                    background: (theme) => `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${theme.palette.background.default} 30%)`,
+                    minHeight: '100vh',
+                }}
             >
                 <Toolbar />
                 {children}

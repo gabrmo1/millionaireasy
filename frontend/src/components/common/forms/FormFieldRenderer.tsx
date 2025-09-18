@@ -10,10 +10,11 @@ interface FormFieldRendererProps {
     field: FormField<any>;
     formData: Record<string, any>;
     onChange: (name: string, value: any) => void;
-    // Props para validação podem ser adicionadas aqui se necessário
+    error?: boolean;
+    helperText?: string | null;
 }
 
-const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, onChange }) => {
+const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, onChange, error = false, helperText = null }) => {
     const value = formData[field.name];
 
     switch (field.type) {
@@ -28,6 +29,8 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                     onChange={(id) => onChange(field.name, id)}
                     required={field.required}
                     size="small"
+                    error={error}
+                    helperText={helperText}
                 />
             );
         case 'checkbox':
@@ -39,7 +42,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
             );
         case 'select':
             return (
-                <FormControl fullWidth required={field.required} size="small">
+                <FormControl fullWidth required={field.required} size="small" error={error}>
                     <InputLabel>{field.label}</InputLabel>
                     <Select
                         name={field.name}
@@ -49,7 +52,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                     >
                         {field.options?.map(option => (<MenuItem key={option.value} value={option.value}> {option.label} </MenuItem>))}
                     </Select>
-                    <FormHelperText>{' '}</FormHelperText>
+                    <FormHelperText>{helperText || ' '}</FormHelperText>
                 </FormControl>
             );
         case 'text':
@@ -66,7 +69,8 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                     required={field.required}
                     fullWidth
                     size="small"
-                    helperText={' '}
+                    error={error}
+                    helperText={helperText || ' '}
                 />
             );
     }
