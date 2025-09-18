@@ -3,7 +3,7 @@ import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, 
 import Grid from '@mui/material/GridLegacy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import type { CondicaoVendaDTO, Estrategia } from '../../types/estrategia';
-import { TipoIndicador, PosicaoFaixasCompraVenda } from '../../types/enums';
+import { TipoIndicador } from '../../types/enums';
 import { getTipoIndicadorOptions, getPosicaoFaixasOptions } from '../../utils/enumMappings';
 
 interface CondicaoVendaFormProps {
@@ -15,6 +15,14 @@ interface CondicaoVendaFormProps {
 }
 
 const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, estrategia, index, onUpdate, onRemove }) => {
+
+    const rsiIndicators = new Set<TipoIndicador>([
+        TipoIndicador.RSI_CURTO,
+        TipoIndicador.RSI_MEDIO,
+        TipoIndicador.RSI_LONGO,
+        TipoIndicador.RSI_ESTOCASTICO_K,
+        TipoIndicador.RSI_ESTOCASTICO_D,
+    ]);
 
     const isIndicatorEnabled = (indicator: TipoIndicador): boolean => {
         switch (indicator) {
@@ -34,6 +42,20 @@ const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, estrate
 
     const handleChange = (name: string, value: string | number) => {
         onUpdate(index, { ...condicao, [name]: value });
+    };
+
+    const handleIndicatorValueChange = (value: string) => {
+        const isRsi = rsiIndicators.has(condicao.tipoIndicador);
+
+        if (isRsi) {
+            const numValue = Number(value);
+            let finalValue: number | string = numValue;
+            if (numValue < 0) finalValue = 0;
+            if (numValue > 100) finalValue = 100;
+            handleChange('valorIndicador', finalValue);
+        } else {
+            handleChange('valorIndicador', value);
+        }
     };
 
     const handlePercentChange = (name: string, value: string) => {
@@ -101,8 +123,8 @@ const CondicaoVendaForm: React.FC<CondicaoVendaFormProps> = ({ condicao, estrate
                                 type="number"
                                 size="small"
                                 fullWidth
-                                value={condicao.valorIndicador || ''}
-                                onChange={(e) => handleChange('valorIndicador', e.target.value)}
+                                value={condicao.valorIndicador ?? ''}
+                                onChange={(e) => handleIndicatorValueChange(e.target.value)}
                             />
                         </Grid>
                     </>

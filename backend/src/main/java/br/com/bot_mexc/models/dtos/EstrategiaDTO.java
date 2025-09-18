@@ -9,6 +9,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Builder
 public record EstrategiaDTO(
@@ -43,6 +44,9 @@ public record EstrategiaDTO(
                 if (!isIndicatorEnabled(condicao.tipoIndicador(), utilizarRsiCurto, utilizarRsiMedio, utilizarRsiLongo, utilizarRsiEstocastico, utilizarEma, utilizarSma, realizarLeituraVolume)) {
                     throw new ValidationException("A condição de compra para o indicador " + condicao.tipoIndicador() + " é inválida, pois o indicador não está habilitado na estratégia.");
                 }
+                if (isRsiIndicator(condicao.tipoIndicador())) {
+                    validarValorRsi(condicao.valorIndicador());
+                }
             }
         }
 
@@ -51,7 +55,27 @@ public record EstrategiaDTO(
                 if (!isIndicatorEnabled(condicao.tipoIndicador(), utilizarRsiCurto, utilizarRsiMedio, utilizarRsiLongo, utilizarRsiEstocastico, utilizarEma, utilizarSma, realizarLeituraVolume)) {
                     throw new ValidationException("A condição de venda para o indicador " + condicao.tipoIndicador() + " é inválida, pois o indicador não está habilitado na estratégia.");
                 }
+                if (isRsiIndicator(condicao.tipoIndicador())) {
+                    validarValorRsi(condicao.valorIndicador());
+                }
             }
+        }
+    }
+
+    private static boolean isRsiIndicator(TipoIndicador indicator) {
+        return indicator == TipoIndicador.RSI_CURTO ||
+                indicator == TipoIndicador.RSI_MEDIO ||
+                indicator == TipoIndicador.RSI_LONGO ||
+                indicator == TipoIndicador.RSI_ESTOCASTICO_K ||
+                indicator == TipoIndicador.RSI_ESTOCASTICO_D;
+    }
+
+    private static void validarValorRsi(BigDecimal valor) {
+        if (Objects.isNull(valor)) {
+            throw new ValidationException("O valor do indicador RSI não pode ser nulo.");
+        }
+        if (valor.compareTo(BigDecimal.ZERO) < 0 || valor.compareTo(new BigDecimal("100")) > 0) {
+            throw new ValidationException("O valor para indicadores RSI deve estar entre 0 e 100.");
         }
     }
 
