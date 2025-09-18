@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Paper, Typography, Box, Button, CircularProgress, Alert, Snackbar, Divider, Collapse, TextField } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import axios from 'axios';
 
 import { getEstrategiaById, createEstrategia, updateEstrategia } from '../../services/estrategiaService';
 import type { Estrategia, CondicaoCompraDTO, CondicaoVendaDTO } from '../../types/estrategia';
@@ -11,6 +12,7 @@ import { estrategiaFormConfig } from './estrategiaConfig';
 import FormFieldRenderer from '../../components/common/forms/FormFieldRenderer';
 import CondicaoCompraForm from './CondicaoCompraForm';
 import CondicaoVendaForm from './CondicaoVendaForm';
+import {TipoIndicador} from "../../types/enums.ts";
 
 const getInitialState = (): Omit<Estrategia, 'id'> => ({
     nome: '',
@@ -54,7 +56,7 @@ const EstrategiaForm: React.FC = () => {
         }
     }, [id, isEditMode]);
 
-    const handleMainChange = (name: string, value: any) => {
+    const handleMainChange = (name: string, value: string | number | boolean) => {
         setEstrategia(prev => ({ ...prev, [name]: value }));
     };
 
@@ -115,8 +117,46 @@ const EstrategiaForm: React.FC = () => {
         setEstrategia(prev => ({ ...prev, condicoesVenda: prev.condicoesVenda.filter((_, i) => i !== index) }));
     };
 
+    const isEstrategiaValida = (): boolean => {
+        const isIndicatorEnabled = (indicator: TipoIndicador): boolean => {
+            switch (indicator) {
+                case TipoIndicador.RSI_CURTO: return estrategia.utilizarRsiCurto;
+                case TipoIndicador.RSI_MEDIO: return estrategia.utilizarRsiMedio;
+                case TipoIndicador.RSI_LONGO: return estrategia.utilizarRsiLongo;
+                case TipoIndicador.RSI_ESTOCASTICO_K:
+                case TipoIndicador.RSI_ESTOCASTICO_D: return estrategia.utilizarRsiEstocastico;
+                case TipoIndicador.EMA: return estrategia.utilizarEma;
+                case TipoIndicador.SMA: return estrategia.utilizarSma;
+                case TipoIndicador.VOLUME: return estrategia.realizarLeituraVolume;
+                default: return false;
+            }
+        };
+
+        for (const condicao of estrategia.condicoesCompra) {
+            if (!isIndicatorEnabled(condicao.tipoIndicador)) {
+                setSnackbar({ open: true, message: `A Condição de Compra para ${condicao.tipoIndicador} é inválida, pois o indicador está desabilitado.`, severity: 'error' });
+                return false;
+            }
+        }
+
+        for (const condicao of estrategia.condicoesVenda) {
+            if (!isIndicatorEnabled(condicao.tipoIndicador)) {
+                setSnackbar({ open: true, message: `A Condição de Venda para ${condicao.tipoIndicador} é inválida, pois o indicador está desabilitado.`, severity: 'error' });
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+
+        if (!isEstrategiaValida()) {
+            return;
+        }
+
         setLoading(true);
         try {
             if (isEditMode) {
@@ -125,9 +165,15 @@ const EstrategiaForm: React.FC = () => {
                 await createEstrategia(estrategia);
             }
             navigate('/estrategias');
-        } catch (error: any) {
+        } catch (error) {
             console.error("Falha ao salvar estratégia:", error);
-            setSnackbar({ open: true, message: error.response?.data?.message || 'Ocorreu um erro inesperado.', severity: 'error' });
+            let message = 'Ocorreu um erro inesperado.';
+            if (axios.isAxiosError(error) && error.response) {
+                message = error.response.data.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            setSnackbar({ open: true, message, severity: 'error' });
         } finally {
             setLoading(false);
         }
@@ -161,7 +207,7 @@ const EstrategiaForm: React.FC = () => {
                                     <Grid item xs={12} sm={field.gridSpan ?? 12} key={field.name}>
                                         <FormFieldRenderer field={field} formData={estrategia} onChange={handleMainChange} />
                                         {dependentFields.length > 0 && (
-                                            <Collapse in={!!(estrategia as any)[field.name]} timeout="auto" unmountOnExit>
+                                            <Collapse in={!!estrategia[field.name as keyof typeof estrategia]} timeout="auto" unmountOnExit>
                                                 <Box sx={{ pl: 2, pt: 1.5, borderLeft: 2, borderColor: 'divider', ml: 1.5, mt: 1 }}>
                                                     <Grid container spacing={1.5}>
                                                         {dependentFields.map(depField => (
@@ -185,7 +231,14 @@ const EstrategiaForm: React.FC = () => {
                             <Button startIcon={<AddCircleOutlineIcon />} onClick={addCondicaoCompra}>Adicionar</Button>
                         </Box>
                         {estrategia.condicoesCompra.map((condicao, index) => (
-                            <CondicaoCompraForm key={condicao.clientId} index={index} condicao={condicao} onUpdate={updateCondicaoCompra} onRemove={removeCondicaoCompra} />
+                            <CondicaoCompraForm
+                                key={condicao.clientId}
+                                index={index}
+                                condicao={condicao}
+                                estrategia={estrategia}
+                                onUpdate={updateCondicaoCompra}
+                                onRemove={removeCondicaoCompra}
+                            />
                         ))}
                         {estrategia.condicoesCompra.length === 0 && <Alert severity="info">Nenhuma condição de compra adicionada.</Alert>}
 
@@ -227,7 +280,14 @@ const EstrategiaForm: React.FC = () => {
                             <Button startIcon={<AddCircleOutlineIcon />} onClick={addCondicaoVenda}>Adicionar</Button>
                         </Box>
                         {estrategia.condicoesVenda.map((condicao, index) => (
-                            <CondicaoVendaForm key={condicao.clientId} index={index} condicao={condicao} onUpdate={updateCondicaoVenda} onRemove={removeCondicaoVenda} />
+                            <CondicaoVendaForm
+                                key={condicao.clientId}
+                                index={index}
+                                condicao={condicao}
+                                estrategia={estrategia}
+                                onUpdate={updateCondicaoVenda}
+                                onRemove={removeCondicaoVenda}
+                            />
                         ))}
                         {estrategia.condicoesVenda.length === 0 && <Alert severity="info">Nenhuma condição de venda adicionada.</Alert>}
 
