@@ -3,6 +3,7 @@ import GenericCrudPage from '../../components/common/pages/GenericCrudPage';
 import { getOperacoes, deleteOperacao } from '../../services/operacaoService';
 import { operacaoGridColumns } from './operacaoConfig';
 import type {Operacao} from '../../types/operacao';
+import OperacaoForm from "./OperacaoForm.tsx";
 
 const OperacoesPage: React.FC = () => (
     <GenericCrudPage<Operacao>
@@ -11,8 +12,7 @@ const OperacoesPage: React.FC = () => (
         fetcher={getOperacoes}
         deleter={deleteOperacao}
         gridColumns={operacaoGridColumns}
-        createRoute="/operacoes/novo"
-        editRoute="operacoes/editar"
+        FormComponent={OperacaoForm}
     />
 );
 

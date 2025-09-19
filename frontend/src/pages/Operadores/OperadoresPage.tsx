@@ -3,6 +3,7 @@ import GenericCrudPage from '../../components/common/pages/GenericCrudPage';
 import { operadorGridColumns } from './operadorConfig';
 import { getOperadores, deleteOperador } from '../../services/operadorService';
 import type {Operador} from '../../types/operador';
+import OperadorForm from "./OperadorForm.tsx";
 
 const OperadoresPage: React.FC = () => {
     return (
@@ -12,8 +13,7 @@ const OperadoresPage: React.FC = () => {
             fetcher={getOperadores}
             deleter={deleteOperador}
             gridColumns={operadorGridColumns}
-            createRoute="/operadores/novo"
-            editRoute="operadores/editar"
+            FormComponent={OperadorForm}
         />
     );
 };
