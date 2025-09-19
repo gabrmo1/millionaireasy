@@ -1,5 +1,7 @@
+// backend/src/main/java/br/com/bot_mexc/models/entities/Estrategia.java
 package br.com.bot_mexc.models.entities;
 
+import br.com.bot_mexc.models.enums.TipoMoedaValorOperacao;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +30,10 @@ public class Estrategia extends BaseEntity {
     /*---------- Valores de Operação ----------*/
     @Column(name = "valor_operacao_fixo")
     private BigDecimal valorOperacaoFixo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_moeda_valor_operacao")
+    private TipoMoedaValorOperacao tipoMoedaValorOperacao;
 
     @Column(name = "percentual_valor_operacao")
     private BigDecimal percentualValorOperacao;

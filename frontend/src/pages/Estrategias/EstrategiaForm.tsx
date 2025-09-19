@@ -1,7 +1,8 @@
+// frontend/src/pages/Estrategias/EstrategiaForm.tsx
 import React, { useState, useEffect } from 'react';
 import { alpha } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Paper, Typography, Box, Button, CircularProgress, Alert, Snackbar, Divider, Collapse, TextField, Checkbox, FormControlLabel, Stepper, Step, StepLabel, List, ListItem, ListItemText } from '@mui/material';
+import { Paper, Typography, Box, Button, CircularProgress, Alert, Snackbar, Divider, Collapse, TextField, Checkbox, FormControlLabel, Stepper, Step, StepLabel, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import axios from 'axios';
@@ -13,7 +14,8 @@ import { estrategiaFormConfig } from './estrategiaConfig';
 import FormFieldRenderer from '../../components/common/forms/FormFieldRenderer';
 import CondicaoCompraForm from './CondicaoCompraForm';
 import CondicaoVendaForm from './CondicaoVendaForm';
-import {tipoIndicadorLabels} from "../../utils/enumMappings.ts";
+import { getTipoMoedaValorOperacaoOptions, tipoIndicadorLabels } from "../../utils/enumMappings.ts";
+import TooltipIcon from "../../components/common/TooltipIcon.tsx";
 
 const steps = ['Informações Gerais', 'Parâmetros de Análise', 'Regras de Compra', 'Regras de Venda', 'Revisão'];
 
@@ -29,6 +31,7 @@ const getInitialState = (): Omit<Estrategia, 'id'> => ({
     vendaApenasPorLucro: false,
     condicoesCompra: [],
     condicoesVenda: [],
+    tipoMoedaValorOperacao: 'QUOTE', // Default para a moeda de cotação
 });
 
 const EstrategiaForm: React.FC = () => {
@@ -60,7 +63,7 @@ const EstrategiaForm: React.FC = () => {
     }, [id, isEditMode]);
 
     // Handlers de Mudança
-    const handleMainChange = (name: string, value: string | number | boolean | undefined) => {
+    const handleMainChange = (name: string, value: any) => {
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: null }));
         }
@@ -69,13 +72,21 @@ const EstrategiaForm: React.FC = () => {
 
     const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string | undefined) => {
         if (errors.valorOperacaoFixo || errors.percentualValorOperacao) {
-            setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null }));
+            setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null, tipoMoedaValorOperacao: null }));
         }
         const numericValue = value ? Number(value) : undefined;
         setEstrategia(prev => {
             const newState = { ...prev, [name]: numericValue };
-            if (name === 'valorOperacaoFixo' && numericValue !== undefined) newState.percentualValorOperacao = undefined;
-            if (name === 'percentualValorOperacao' && numericValue !== undefined) newState.valorOperacaoFixo = undefined;
+            if (name === 'valorOperacaoFixo' && numericValue !== undefined) {
+                newState.percentualValorOperacao = undefined;
+                if (!newState.tipoMoedaValorOperacao) {
+                    newState.tipoMoedaValorOperacao = 'QUOTE'; // Garante um default
+                }
+            }
+            if (name === 'percentualValorOperacao' && numericValue !== undefined) {
+                newState.valorOperacaoFixo = undefined;
+                newState.tipoMoedaValorOperacao = undefined; // Limpa o tipo quando usa percentual
+            }
             return newState;
         });
     };
@@ -122,6 +133,10 @@ const EstrategiaForm: React.FC = () => {
                         newErrors.valorOperacaoFixo = errorMsg;
                         newErrors.percentualValorOperacao = errorMsg;
                         setSnackbar({ open: true, message: `É necessário definir um Valor Fixo ou Percentual de operação.`, severity: 'error' });
+                        isValid = false;
+                    }
+                    if (valorFixo && valorFixo > 0 && !estrategia.tipoMoedaValorOperacao) {
+                        newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
                         isValid = false;
                     }
                 }
@@ -198,6 +213,7 @@ const EstrategiaForm: React.FC = () => {
                     </Grid>
                 );
             case 2:
+                const tipoMoedaTooltip = "Moeda Base: É a primeira moeda do par (ex: BTC em BTC/USDT). Usada para definir quanto da moeda principal você quer comprar. Moeda de Cotação: É a segunda moeda (ex: USDT em BTC/USDT). Usada para definir quanto você quer gastar para comprar a moeda base.";
                 return (
                     <>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -210,11 +226,39 @@ const EstrategiaForm: React.FC = () => {
                         <Box>
                             <Typography variant="h6" sx={{ mb: 2 }}>Parâmetros de Compra</Typography>
                             <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <TextField label="Valor Fixo Operação (Ex: 10.50)" type="number" size="small" fullWidth value={estrategia.valorOperacaoFixo ?? ''} onChange={(e) => handleValorOperacaoChange('valorOperacaoFixo', e.target.value)} disabled={!!estrategia.percentualValorOperacao} inputProps={{ min: 0 }} error={!!errors.valorOperacaoFixo} helperText={errors.valorOperacaoFixo || ' '} />
+                                <Grid item xs={12} sm={4}>
+                                    <TextField label="Valor Fixo Operação" type="number" size="small" fullWidth value={estrategia.valorOperacaoFixo ?? ''} onChange={(e) => handleValorOperacaoChange('valorOperacaoFixo', e.target.value)} disabled={!!estrategia.percentualValorOperacao} inputProps={{ min: 0 }} error={!!errors.valorOperacaoFixo} helperText={errors.valorOperacaoFixo || ' '} />
                                 </Grid>
-                                <Grid item xs={6}>
-                                    <TextField label="% do Saldo na Operação" type="number" size="small" fullWidth value={estrategia.percentualValorOperacao ?? ''} onChange={(e) => handlePercentChange('percentualValorOperacao', e.target.value, 100)} disabled={!!estrategia.valorOperacaoFixo} error={!!errors.percentualValorOperacao} helperText={errors.percentualValorOperacao || ' '} />
+                                <Grid item xs={12} sm={4}>
+                                    <Collapse in={!!estrategia.valorOperacaoFixo && !estrategia.percentualValorOperacao} sx={{ width: '100%' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <FormControl fullWidth size="small" error={!!errors.tipoMoedaValorOperacao}>
+                                                <InputLabel>Tipo de Moeda</InputLabel>
+                                                <Select
+                                                    name="tipoMoedaValorOperacao"
+                                                    label="Tipo de Moeda"
+                                                    value={estrategia.tipoMoedaValorOperacao ?? ''}
+                                                    onChange={(e) => handleMainChange('tipoMoedaValorOperacao', e.target.value)}
+                                                >
+                                                    {getTipoMoedaValorOperacaoOptions().map(option => ( <MenuItem key={option.value} value={option.value}> {option.label} </MenuItem> ))}
+                                                </Select>
+                                            </FormControl>
+                                            <TooltipIcon description={tipoMoedaTooltip} />
+                                        </Box>
+                                    </Collapse>
+                                </Grid>
+                                <Grid item xs={12} sm={4}>
+                                    <TextField
+                                        label="% do Saldo na Operação"
+                                        type="number"
+                                        size="small"
+                                        fullWidth
+                                        value={estrategia.percentualValorOperacao ?? ''}
+                                        onChange={(e) => handlePercentChange('percentualValorOperacao', e.target.value, 100)}
+                                        disabled={!!estrategia.valorOperacaoFixo}
+                                        error={!!errors.percentualValorOperacao}
+                                        helperText={errors.percentualValorOperacao || 'Sempre referente à moeda de cotação (Ex: USDT em BTC/USDT).'}
+                                    />
                                 </Grid>
                             </Grid>
                         </Box>
@@ -247,7 +291,7 @@ const EstrategiaForm: React.FC = () => {
                             <ListItem><ListItemText primary="Nome" secondary={estrategia.nome} /></ListItem>
                             <ListItem><ListItemText primary="Condições de Compra" secondary={estrategia.condicoesCompra.length} /></ListItem>
                             <ListItem><ListItemText primary="Condições de Venda" secondary={estrategia.condicoesVenda.length} /></ListItem>
-                            <ListItem><ListItemText primary="Valor da Operação" secondary={estrategia.valorOperacaoFixo ? `$${estrategia.valorOperacaoFixo}` : `${estrategia.percentualValorOperacao}% do saldo`} /></ListItem>
+                            <ListItem><ListItemText primary="Valor da Operação" secondary={estrategia.valorOperacaoFixo ? `$${estrategia.valorOperacaoFixo} (${estrategia.tipoMoedaValorOperacao})` : `${estrategia.percentualValorOperacao}% do saldo`} /></ListItem>
                             <ListItem><ListItemText primary="Venda por Lucro" secondary={estrategia.vendaApenasPorLucro ? `Sim, com ${estrategia.percentualLucro || 0}% de lucro` : 'Não'} /></ListItem>
                             <ListItem><ListItemText primary="Indicadores Ativos" secondary={Object.entries(estrategia).filter(([key, value]) => key.startsWith('utilizar') && value).map(([key]) => tipoIndicadorLabels[key as keyof typeof tipoIndicadorLabels] || key).join(', ')} /></ListItem>
                         </List>

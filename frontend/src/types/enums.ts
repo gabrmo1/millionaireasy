@@ -19,3 +19,10 @@ export const TipoIndicador = {
 } as const;
 
 export type TipoIndicador = typeof TipoIndicador[keyof typeof TipoIndicador];
+
+export const TipoMoedaValorOperacao = {
+    BASE: 'BASE',
+    QUOTE: 'QUOTE'
+} as const;
+
+export type TipoMoedaValorOperacao = typeof TipoMoedaValorOperacao[keyof typeof TipoMoedaValorOperacao];

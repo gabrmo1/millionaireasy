@@ -36,6 +36,7 @@ public class EstrategiaUtils {
         entidade.setPeriodoSma(dto.periodoSma());
         entidade.setRealizarLeituraVolume(dto.realizarLeituraVolume());
         entidade.setValorOperacaoFixo(dto.valorOperacaoFixo());
+        entidade.setTipoMoedaValorOperacao(dto.tipoMoedaValorOperacao());
         entidade.setPercentualValorOperacao(dto.percentualValorOperacao());
         entidade.setVendaApenasPorLucro(dto.vendaApenasPorLucro());
         entidade.setPercentualLucro(dto.percentualLucro());
@@ -65,6 +66,7 @@ public class EstrategiaUtils {
                 .periodoSma(entidade.getPeriodoSma())
                 .realizarLeituraVolume(entidade.getRealizarLeituraVolume())
                 .valorOperacaoFixo(entidade.getValorOperacaoFixo())
+                .tipoMoedaValorOperacao(entidade.getTipoMoedaValorOperacao())
                 .percentualValorOperacao(entidade.getPercentualValorOperacao())
                 .vendaApenasPorLucro(entidade.getVendaApenasPorLucro())
                 .percentualLucro(entidade.getPercentualLucro())
