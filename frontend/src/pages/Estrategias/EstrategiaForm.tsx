@@ -8,7 +8,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import axios from 'axios';
 
 import { getEstrategiaById, createEstrategia, updateEstrategia } from '../../services/estrategiaService';
-import type { Estrategia, CondicaoCompraDTO, CondicaoVendaDTO } from '../../types/estrategia';
+import type { Estrategia, CondicaoCompraDTO, CondicaoVendaDTO, CriarEstrategiaDTO } from '../../types/estrategia';
 import { estrategiaFormConfig } from './estrategiaConfig';
 
 import FormFieldRenderer from '../../components/common/forms/FormFieldRenderer';
@@ -16,6 +16,7 @@ import CondicaoCompraForm from './CondicaoCompraForm';
 import CondicaoVendaForm from './CondicaoVendaForm';
 import { getTipoMoedaValorOperacaoOptions, tipoIndicadorLabels } from "../../utils/enumMappings.ts";
 import TooltipIcon from "../../components/common/TooltipIcon.tsx";
+import { formatLeadingZeros } from "../../utils/inputFormatters.ts";
 
 const steps = ['Informações Gerais', 'Parâmetros de Análise', 'Regras de Compra', 'Regras de Venda', 'Revisão'];
 
@@ -67,41 +68,63 @@ const EstrategiaForm: React.FC = () => {
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: null }));
         }
-        setEstrategia(prev => ({ ...prev, [name]: value }));
+
+        const fieldConfig = estrategiaFormConfig.find(f => f.name === name);
+        let processedValue = value;
+        if (fieldConfig && fieldConfig.type === 'number' && typeof value === 'string') {
+            processedValue = formatLeadingZeros(value);
+        }
+
+        setEstrategia(prev => ({ ...prev, [name]: processedValue }));
     };
 
     const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string | undefined) => {
         if (errors.valorOperacaoFixo || errors.percentualValorOperacao) {
             setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null, tipoMoedaValorOperacao: null }));
         }
-        const numericValue = value ? Number(value) : undefined;
+
+        const formattedValue = value !== undefined ? formatLeadingZeros(value) : undefined;
+
         setEstrategia(prev => {
-            const newState = { ...prev, [name]: numericValue };
-            if (name === 'valorOperacaoFixo' && numericValue !== undefined) {
+            const newState = { ...prev, [name]: formattedValue };
+            if (name === 'valorOperacaoFixo' && formattedValue) {
                 newState.percentualValorOperacao = undefined;
                 if (!newState.tipoMoedaValorOperacao) {
-                    newState.tipoMoedaValorOperacao = 'QUOTE'; // Garante um default
+                    newState.tipoMoedaValorOperacao = 'QUOTE';
                 }
             }
-            if (name === 'percentualValorOperacao' && numericValue !== undefined) {
+            if (name === 'percentualValorOperacao' && formattedValue) {
                 newState.valorOperacaoFixo = undefined;
-                newState.tipoMoedaValorOperacao = undefined; // Limpa o tipo quando usa percentual
+                newState.tipoMoedaValorOperacao = undefined;
             }
             return newState;
         });
     };
 
     const handlePercentChange = (name: 'percentualValorOperacao' | 'percentualLucro', value: string, max: number) => {
+        const formattedValue = formatLeadingZeros(value);
+
         if (name === 'percentualValorOperacao' && (errors.valorOperacaoFixo || errors.percentualValorOperacao)) {
             setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null }));
         }
-        if (value === '') { handleMainChange(name, undefined); return; }
-        const numValue = Number(value);
+
+        if (formattedValue === '') {
+            handleMainChange(name, '');
+            return;
+        }
+
+        const numValue = Number(formattedValue);
         let finalValue = numValue;
         if (numValue < 0) finalValue = 0;
         if (numValue > max) finalValue = max;
-        if (name === 'percentualValorOperacao') { handleValorOperacaoChange(name, String(finalValue)); }
-        else { handleMainChange(name, finalValue); }
+
+        const finalValueStr = String(finalValue);
+
+        if (name === 'percentualValorOperacao') {
+            handleValorOperacaoChange(name, finalValueStr);
+        } else {
+            handleMainChange(name, finalValueStr);
+        }
     };
 
     // Handlers de Condições (Compra/Venda)
@@ -128,14 +151,14 @@ const EstrategiaForm: React.FC = () => {
                 if (estrategia.condicoesCompra.length > 0) {
                     const valorFixo = estrategia.valorOperacaoFixo;
                     const valorPercentual = estrategia.percentualValorOperacao;
-                    if ((!valorFixo || valorFixo <= 0) && (!valorPercentual || valorPercentual <= 0)) {
+                    if ((!valorFixo || Number(valorFixo) <= 0) && (!valorPercentual || Number(valorPercentual) <= 0)) {
                         const errorMsg = "Defina um valor de operação.";
                         newErrors.valorOperacaoFixo = errorMsg;
                         newErrors.percentualValorOperacao = errorMsg;
                         setSnackbar({ open: true, message: `É necessário definir um Valor Fixo ou Percentual de operação.`, severity: 'error' });
                         isValid = false;
                     }
-                    if (valorFixo && valorFixo > 0 && !estrategia.tipoMoedaValorOperacao) {
+                    if (valorFixo && Number(valorFixo) > 0 && !estrategia.tipoMoedaValorOperacao) {
                         newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
                         isValid = false;
                     }
@@ -158,9 +181,26 @@ const EstrategiaForm: React.FC = () => {
         if (!isStepValid(activeStep)) return;
 
         setLoading(true);
+
+        const numberFields: (keyof CriarEstrategiaDTO)[] = [
+            'periodoRsiCurto', 'periodoRsiMedio', 'periodoRsiLongo',
+            'periodoRsiEstocastico', 'suavizacaoRsiEstocasticoK', 'suavizacaoRsiEstocasticoD',
+            'periodoEma', 'periodoSma', 'valorOperacaoFixo',
+            'percentualValorOperacao', 'percentualLucro'
+        ];
+
+        const payload = { ...estrategia };
+
+        for (const field of numberFields) {
+            const value = payload[field];
+            if (value !== null && value !== undefined && value !== '') {
+                (payload as any)[field] = Number(value);
+            }
+        }
+
         try {
-            if (isEditMode) { await updateEstrategia(id, estrategia); }
-            else { await createEstrategia(estrategia); }
+            if (isEditMode) { await updateEstrategia(id, payload as CriarEstrategiaDTO); }
+            else { await createEstrategia(payload as CriarEstrategiaDTO); }
             navigate('/estrategias');
         } catch (error) {
             console.error("Falha ao salvar estratégia:", error);
@@ -213,7 +253,7 @@ const EstrategiaForm: React.FC = () => {
                     </Grid>
                 );
             case 2:
-                const tipoMoedaTooltip = "Moeda Base: É a primeira moeda do par (ex: BTC em BTC/USDT). Usada para definir quanto da moeda principal você quer comprar. Moeda de Cotação: É a segunda moeda (ex: USDT em BTC/USDT). Usada para definir quanto você quer gastar para comprar a moeda base.";
+                { const tipoMoedaTooltip = "Moeda Base: É a primeira moeda do par (ex: BTC em BTC/USDT). Usada para definir quanto da moeda principal você quer comprar. Moeda de Cotação: É a segunda moeda (ex: USDT em BTC/USDT). Usada para definir quanto você quer gastar para comprar a moeda base.";
                 return (
                     <>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -263,7 +303,7 @@ const EstrategiaForm: React.FC = () => {
                             </Grid>
                         </Box>
                     </>
-                );
+                ); }
             case 3:
                 return (
                     <>

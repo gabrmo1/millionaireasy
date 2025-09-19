@@ -1,3 +1,4 @@
+// frontend/src/components/common/forms/GenericFormPage.tsx
 import React, { useState, useEffect } from 'react';
 import { alpha } from '@mui/material/styles'
 import { useNavigate, useParams } from 'react-router-dom';
@@ -9,6 +10,7 @@ import {
 import Grid from '@mui/material/GridLegacy';
 import type {FormField, BaseEntity} from '../../../types/common';
 import EntitySelectorField from './EntitySelectorField';
+import { formatLeadingZeros } from "../../../utils/inputFormatters.ts";
 
 interface GenericFormPageProps<T extends BaseEntity> {
     title: string;
@@ -80,7 +82,14 @@ export default function GenericFormPage<T extends BaseEntity>({
 
 
     const handleChange = (name: string, value: any) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const field = formConfig.find(f => f.name === name);
+        let processedValue = value;
+
+        if (field && field.type === 'number' && typeof value === 'string') {
+            processedValue = formatLeadingZeros(value);
+        }
+
+        setFormData(prev => ({ ...prev, [name]: processedValue }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: null }));
         }

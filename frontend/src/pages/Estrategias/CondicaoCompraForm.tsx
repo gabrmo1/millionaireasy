@@ -1,3 +1,4 @@
+// frontend/src/pages/Estrategias/CondicaoCompraForm.tsx
 import React from 'react';
 import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField, FormHelperText } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
@@ -5,6 +6,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import type { CondicaoCompraDTO, Estrategia } from '../../types/estrategia';
 import { TipoIndicador } from '../../types/enums';
 import { getTipoIndicadorOptions, getPosicaoFaixasOptions } from '../../utils/enumMappings';
+import { formatLeadingZeros } from "../../utils/inputFormatters.ts";
 
 interface CondicaoCompraFormProps {
     condicao: CondicaoCompraDTO;
@@ -46,16 +48,17 @@ const CondicaoCompraForm: React.FC<CondicaoCompraFormProps> = ({ condicao, estra
     };
 
     const handleIndicatorValueChange = (value: string) => {
+        const formattedValue = formatLeadingZeros(value);
         const isRsi = rsiIndicators.has(condicao.tipoIndicador);
 
         if (isRsi) {
-            const numValue = Number(value);
+            const numValue = Number(formattedValue);
             let finalValue: number | string = numValue;
             if (numValue < 0) finalValue = 0;
             if (numValue > 100) finalValue = 100;
-            handleChange('valorIndicador', finalValue);
+            handleChange('valorIndicador', String(finalValue));
         } else {
-            handleChange('valorIndicador', value);
+            handleChange('valorIndicador', formattedValue);
         }
     };
 
