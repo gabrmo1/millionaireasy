@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+// frontend/src/components/common/pages/GenericCrudPage.tsx
+import { useEffect, useState, useCallback, type ComponentType } from 'react';
 import { Paper, Typography, Box, Alert, Fab } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import type {GridColDef, GridRowId} from '@mui/x-data-grid';
-import { useNavigate } from 'react-router-dom';
+import type { GridColDef, GridRowId } from '@mui/x-data-grid';
 import DynamicDataGrid from '../../grid/DynamicDataGrid';
-import type {BaseEntity} from '../../../types/common';
+import type { BaseEntity } from '../../../types/common';
+import FormModal from '../modals/FormModal';
 
 interface GenericCrudPageProps<T extends BaseEntity> {
     title: string;
@@ -12,8 +13,7 @@ interface GenericCrudPageProps<T extends BaseEntity> {
     fetcher: () => Promise<T[]>;
     deleter?: (id: string) => Promise<void>;
     gridColumns: GridColDef[];
-    createRoute: string;
-    editRoute: string; // <-- Nova propriedade
+    FormComponent: ComponentType<{ entityId: string | null; onClose: () => void; onSave: () => void; }>;
 }
 
 export default function GenericCrudPage<T extends BaseEntity>({
@@ -22,11 +22,11 @@ export default function GenericCrudPage<T extends BaseEntity>({
                                                                   fetcher,
                                                                   deleter,
                                                                   gridColumns,
-                                                                  createRoute,
-                                                                  editRoute, // <-- Nova propriedade
+                                                                  FormComponent,
                                                               }: GenericCrudPageProps<T>) {
     const [entities, setEntities] = useState<T[]>([]);
-    const navigate = useNavigate();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
 
     const loadEntities = useCallback(() => {
         fetcher()
@@ -39,7 +39,23 @@ export default function GenericCrudPage<T extends BaseEntity>({
     }, [loadEntities]);
 
     const handleEdit = (id: GridRowId) => {
-        navigate(`/${editRoute}/${id}`);
+        setSelectedEntityId(String(id));
+        setIsModalOpen(true);
+    };
+
+    const handleCreate = () => {
+        setSelectedEntityId(null);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedEntityId(null);
+    };
+
+    const handleSave = () => {
+        handleCloseModal();
+        loadEntities(); // Recarrega os dados do grid após salvar
     };
 
     const handleDelete = async (id: GridRowId) => {
@@ -54,59 +70,61 @@ export default function GenericCrudPage<T extends BaseEntity>({
     };
 
     return (
-        <Paper
-            elevation={2}
-            sx={{
-                height: 'calc(100vh - 112px)',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden'
-            }}
-        >
-            {/* Cabeçalho com Título e Botão */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: (theme) => theme.palette.action.hover, position: 'relative' }}>
-                <Box sx={{ p: 2 }}>
-                    <Typography variant="h5" component="h2">
-                        {`${title} - Visualizar`}
-                    </Typography>
+        <>
+            <Paper
+                elevation={2}
+                sx={{
+                    height: 'calc(100vh - 112px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}
+            >
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: (theme) => theme.palette.action.hover, position: 'relative' }}>
+                    <Box sx={{ p: 2 }}>
+                        <Typography variant="h5" component="h2">{title}</Typography>
+                    </Box>
+                    <Fab
+                        variant="extended"
+                        color="primary"
+                        aria-label="add"
+                        onClick={handleCreate}
+                        sx={{ position: 'absolute', top: '50%', right: '32px', transform: 'translateY(-50%)' }}
+                    >
+                        <AddIcon sx={{ mr: 1 }} />
+                        Criar {title}
+                    </Fab>
                 </Box>
-                <Fab
-                    variant="extended"
-                    color="primary"
-                    aria-label="add"
-                    onClick={() => navigate(createRoute)}
-                    sx={{
-                        position: 'absolute',
-                        top: '50%',
-                        right: '32px',
-                        transform: 'translateY(-50%)',
-                    }}
-                >
-                    <AddIcon sx={{ mr: 1 }} />
-                    Criar {title}
-                </Fab>
-            </Box>
 
-            {/* Caixa de Descrição */}
-            {description && (
-                <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
-                    <Alert severity="info">
-                        {description}
-                    </Alert>
-                </Box>
-            )}
+                {description && (
+                    <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+                        <Alert severity="info">{description}</Alert>
+                    </Box>
+                )}
 
-            {/* Corpo com a Grade */}
-            <Box sx={{ flexGrow: 1, p: '32px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <Box sx={{ flexGrow: 1, width: '100%' }}>
-                    <DynamicDataGrid
-                        initialRows={entities}
-                        gridColumns={gridColumns}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                    />
+                <Box sx={{ flexGrow: 1, p: '32px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <Box sx={{ flexGrow: 1, width: '100%' }}>
+                        <DynamicDataGrid
+                            initialRows={entities}
+                            gridColumns={gridColumns}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                        />
+                    </Box>
                 </Box>
-            </Box>
-        </Paper>
+            </Paper>
+
+            <FormModal
+                open={isModalOpen}
+                onClose={handleCloseModal}
+                title={selectedEntityId ? `Editar ${title}` : `Criar ${title}`}
+            >
+                <FormComponent
+                    entityId={selectedEntityId}
+                    onClose={handleCloseModal}
+                    onSave={handleSave}
+                />
+            </FormModal>
+        </>
     );
 }

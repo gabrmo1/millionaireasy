@@ -1,6 +1,7 @@
 // backend/src/main/java/br/com/bot_mexc/utils/EstrategiaUtils.java
 package br.com.bot_mexc.utils;
 
+import br.com.bot_mexc.models.dtos.CriarEstrategiaDTO;
 import br.com.bot_mexc.models.dtos.EstrategiaDTO;
 import br.com.bot_mexc.models.entities.Estrategia;
 import lombok.experimental.UtilityClass;
@@ -12,13 +13,13 @@ import java.util.stream.Collectors;
 @UtilityClass
 public class EstrategiaUtils {
 
-    public static Estrategia converterDtoParaEntidade(EstrategiaDTO dto) {
+    public static Estrategia converterDtoParaEntidade(CriarEstrategiaDTO dto) {
         Estrategia entidade = new Estrategia();
         atualizarEntidadeComDto(entidade, dto);
         return entidade;
     }
 
-    public static void atualizarEntidadeComDto(Estrategia entidade, EstrategiaDTO dto) {
+    public static void atualizarEntidadeComDto(Estrategia entidade, CriarEstrategiaDTO dto) {
         entidade.setNome(dto.nome());
         entidade.setUtilizarRsiCurto(dto.utilizarRsiCurto());
         entidade.setPeriodoRsiCurto(dto.periodoRsiCurto());

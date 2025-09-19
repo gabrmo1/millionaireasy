@@ -1,5 +1,6 @@
 package br.com.bot_mexc.controllers;
 
+import br.com.bot_mexc.models.dtos.CriarEstrategiaDTO;
 import br.com.bot_mexc.models.dtos.EstrategiaDTO;
 import br.com.bot_mexc.services.EstrategiaService;
 import jakarta.validation.Valid;
@@ -30,13 +31,13 @@ public class EstrategiaController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> criarEstrategia(@RequestBody @Valid EstrategiaDTO request) {
+    public ResponseEntity<Void> criarEstrategia(@RequestBody @Valid CriarEstrategiaDTO request) {
         estrategiaService.criarEstrategia(request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateEstrategia(@PathVariable String id, @RequestBody @Valid EstrategiaDTO request) {
+    public ResponseEntity<Void> updateEstrategia(@PathVariable String id, @RequestBody @Valid CriarEstrategiaDTO request) {
         estrategiaService.updateEstrategia(id, request);
         return ResponseEntity.ok().build();
     }

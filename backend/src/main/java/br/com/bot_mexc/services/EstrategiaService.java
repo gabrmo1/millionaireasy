@@ -1,5 +1,6 @@
 package br.com.bot_mexc.services;
 
+import br.com.bot_mexc.models.dtos.CriarEstrategiaDTO;
 import br.com.bot_mexc.models.dtos.EstrategiaDTO;
 import br.com.bot_mexc.models.entities.CondicaoCompra;
 import br.com.bot_mexc.models.entities.CondicaoVenda;
@@ -39,7 +40,7 @@ public class EstrategiaService {
     }
 
     @Transactional
-    public void criarEstrategia(EstrategiaDTO dto) {
+    public void criarEstrategia(CriarEstrategiaDTO dto) {
         Estrategia estrategia = EstrategiaUtils.converterDtoParaEntidade(dto);
 
         if (!CollectionUtils.isEmpty(dto.condicoesCompra())) {
@@ -58,7 +59,7 @@ public class EstrategiaService {
     }
 
     @Transactional
-    public void updateEstrategia(String id, EstrategiaDTO dto) {
+    public void updateEstrategia(String id, CriarEstrategiaDTO dto) {
         final var estrategia = estrategiaRepository.findByIdWithConditions(id)
                 .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
 

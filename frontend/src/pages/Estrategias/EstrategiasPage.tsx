@@ -1,8 +1,10 @@
+// frontend/src/pages/Estrategias/EstrategiasPage.tsx
 import React from 'react';
 import GenericCrudPage from '../../components/common/pages/GenericCrudPage';
 import { getEstrategias, deleteEstrategia } from '../../services/estrategiaService';
 import { estrategiaGridColumns } from './estrategiaConfig';
 import type { Estrategia } from '../../types/estrategia';
+import EstrategiaForm from "./EstrategiaForm.tsx";
 
 const EstrategiasPage: React.FC = () => (
     <GenericCrudPage<Estrategia>
@@ -11,8 +13,7 @@ const EstrategiasPage: React.FC = () => (
         fetcher={getEstrategias}
         deleter={deleteEstrategia}
         gridColumns={estrategiaGridColumns}
-        createRoute="/estrategias/novo"
-        editRoute="estrategias/editar"
+        FormComponent={EstrategiaForm}
     />
 );
 
