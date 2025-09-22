@@ -1,5 +1,5 @@
 // frontend/src/types/estrategia.ts
-import type { PosicaoFaixasCompraVenda, TipoIndicador, TipoMoedaValorOperacao } from './enums';
+import type { PosicaoFaixasCompraVenda, TipoIndicador, TipoMoedaValorOperacao, OperadorLogico } from './enums';
 
 export interface CondicaoCompraDTO {
     id?: string;
@@ -7,6 +7,8 @@ export interface CondicaoCompraDTO {
     tipoIndicador: TipoIndicador;
     valorIndicador?: number;
     posicaoFaixa?: PosicaoFaixasCompraVenda;
+    ordem: number;
+    operadorParaProxima?: OperadorLogico;
 }
 
 export interface CondicaoVendaDTO {
@@ -15,6 +17,8 @@ export interface CondicaoVendaDTO {
     tipoIndicador: TipoIndicador;
     valorIndicador?: number;
     posicaoFaixa?: PosicaoFaixasCompraVenda;
+    ordem: number;
+    operadorParaProxima?: OperadorLogico;
 }
 
 export interface Estrategia {

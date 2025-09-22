@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import { Box, Button, CircularProgress, Alert, Snackbar, Stepper, Step, StepButton } from '@mui/material';
 import axios from 'axios';
 
@@ -10,8 +10,7 @@ import Step5_Revisao from './formSteps/Step5_Revisao';
 
 import { getEstrategiaById, createEstrategia, updateEstrategia } from '../../services/estrategiaService';
 import type { CondicaoCompraDTO, CondicaoVendaDTO, CriarEstrategiaDTO } from '../../types/estrategia';
-import { estrategiaFormConfig } from './estrategiaConfig';
-
+import { TipoIndicador } from '../../types/enums';
 import { formatLeadingZeros } from "../../utils/inputFormatters.ts";
 
 interface EstrategiaFormProps {
@@ -55,10 +54,82 @@ const getInitialState = (): EstrategiaFormData => ({
     tipoMoedaValorOperacao: 'QUOTE',
 });
 
+// --- REDUCER LOGIC ---
+type Action =
+    | { type: 'SET_FORM_DATA'; payload: EstrategiaFormData }
+    | { type: 'SET_FIELD'; field: string; value: any }
+    | { type: 'SET_VALOR_OPERACAO'; name: 'valorOperacaoFixo' | 'percentualValorOperacao'; value: string | undefined }
+    | { type: 'ADD_CONDICAO'; tipo: 'compra' | 'venda' }
+    | { type: 'REMOVE_CONDICAO'; tipo: 'compra' | 'venda'; index: number }
+    | { type: 'UPDATE_CONDICAO'; tipo: 'compra' | 'venda'; index: number; payload: CondicaoCompraDTO | CondicaoVendaDTO };
+
+function estrategiaReducer(state: EstrategiaFormData, action: Action): EstrategiaFormData {
+    switch (action.type) {
+        case 'SET_FORM_DATA':
+            return action.payload;
+        case 'SET_FIELD':
+            return { ...state, [action.field]: action.value };
+        case 'SET_VALOR_OPERACAO': {
+            const newState = { ...state, [action.name]: action.value };
+            if (action.name === 'valorOperacaoFixo' && action.value) {
+                newState.percentualValorOperacao = undefined;
+                if (!newState.tipoMoedaValorOperacao) newState.tipoMoedaValorOperacao = 'QUOTE';
+            }
+            if (action.name === 'percentualValorOperacao' && action.value) {
+                newState.valorOperacaoFixo = undefined;
+                newState.tipoMoedaValorOperacao = undefined;
+            }
+            return newState;
+        }
+        case 'ADD_CONDICAO': {
+            const field = action.tipo === 'compra' ? 'condicoesCompra' : 'condicoesVenda';
+            const newCondicao = {
+                clientId: Math.random(),
+                tipoIndicador: TipoIndicador.RSI_CURTO,
+                ordem: state[field].length,
+                operadorParaProxima: 'AND'
+            };
+            return { ...state, [field]: [...state[field], newCondicao as any] };
+        }
+        case 'REMOVE_CONDICAO': {
+            const field = action.tipo === 'compra' ? 'condicoesCompra' : 'condicoesVenda';
+            const newCondicoes = state[field].filter((_, i) => i !== action.index);
+            const reorderedCondicoes = newCondicoes.map((cond, newIndex) => ({
+                ...cond,
+                ordem: newIndex,
+            }));
+            return { ...state, [field]: reorderedCondicoes };
+        }
+        case 'UPDATE_CONDICAO': {
+            const field = action.tipo === 'compra' ? 'condicoesCompra' : 'condicoesVenda';
+            const newCondicoes = [...state[field]];
+            newCondicoes[action.index] = action.payload as any;
+            return { ...state, [field]: newCondicoes };
+        }
+        default:
+            return state;
+    }
+}
+// --- END OF REDUCER LOGIC ---
+
+const isIndicatorEnabled = (indicator: TipoIndicador, estrategia: EstrategiaFormData): boolean => {
+    switch (indicator) {
+        case TipoIndicador.RSI_CURTO: return estrategia.utilizarRsiCurto;
+        case TipoIndicador.RSI_MEDIO: return estrategia.utilizarRsiMedio;
+        case TipoIndicador.RSI_LONGO: return estrategia.utilizarRsiLongo;
+        case TipoIndicador.RSI_ESTOCASTICO_K:
+        case TipoIndicador.RSI_ESTOCASTICO_D: return estrategia.utilizarRsiEstocastico;
+        case TipoIndicador.EMA: return estrategia.utilizarEma;
+        case TipoIndicador.SMA: return estrategia.utilizarSma;
+        case TipoIndicador.VOLUME: return estrategia.realizarLeituraVolume;
+        default: return false;
+    }
+};
+
 const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSave }) => {
     const isEditMode = !!entityId;
     const [activeStep, setActiveStep] = useState(0);
-    const [estrategia, setEstrategia] = useState<EstrategiaFormData>(getInitialState());
+    const [estrategia, dispatch] = useReducer(estrategiaReducer, getInitialState());
     const [loading, setLoading] = useState<boolean>(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'error' });
     const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -70,11 +141,14 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
                 .then(data => {
                     const formData: any = { ...data };
                     Object.keys(formData).forEach(key => {
-                        if (typeof formData[key] === 'number') {
-                            formData[key] = String(formData[key]);
-                        }
+                        if (typeof formData[key] === 'number') formData[key] = String(formData[key]);
                     });
-                    setEstrategia({ ...formData, condicoesCompra: data.condicoesCompra.map(c => ({...c, clientId: Math.random()})), condicoesVenda: data.condicoesVenda.map(v => ({...v, clientId: Math.random()})), });
+                    const processedData = {
+                        ...formData,
+                        condicoesCompra: data.condicoesCompra.map(c => ({...c, clientId: Math.random()})).sort((a,b) => a.ordem - b.ordem),
+                        condicoesVenda: data.condicoesVenda.map(v => ({...v, clientId: Math.random()})).sort((a,b) => a.ordem - b.ordem)
+                    };
+                    dispatch({ type: 'SET_FORM_DATA', payload: processedData });
                 })
                 .catch(err => {
                     console.error("Falha ao carregar estratégia:", err);
@@ -86,29 +160,14 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
 
     const handleMainChange = (name: string, value: any) => {
         if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
-        const fieldConfig = estrategiaFormConfig.find(f => f.name === name);
-        let processedValue = value;
-        if (fieldConfig && fieldConfig.type === 'number' && typeof value === 'string') {
-            processedValue = formatLeadingZeros(value);
-        }
-        setEstrategia(prev => ({ ...prev, [name]: processedValue }));
+        const processedValue = typeof value === 'string' ? formatLeadingZeros(value) : value;
+        dispatch({ type: 'SET_FIELD', field: name, value: processedValue });
     };
 
     const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string | undefined) => {
         if (errors.valorOperacaoFixo || errors.percentualValorOperacao) setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null, tipoMoedaValorOperacao: null }));
         const formattedValue = value !== undefined ? formatLeadingZeros(value) : undefined;
-        setEstrategia(prev => {
-            const newState = { ...prev, [name]: formattedValue };
-            if (name === 'valorOperacaoFixo' && formattedValue) {
-                newState.percentualValorOperacao = undefined;
-                if (!newState.tipoMoedaValorOperacao) newState.tipoMoedaValorOperacao = 'QUOTE';
-            }
-            if (name === 'percentualValorOperacao' && formattedValue) {
-                newState.valorOperacaoFixo = undefined;
-                newState.tipoMoedaValorOperacao = undefined;
-            }
-            return newState;
-        });
+        dispatch({ type: 'SET_VALOR_OPERACAO', name, value: formattedValue });
     };
 
     const handlePercentChange = (name: 'percentualValorOperacao' | 'percentualLucro', value: string, max: number) => {
@@ -124,39 +183,60 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
         else handleMainChange(name, finalValueStr);
     };
 
-    const addCondicaoCompra = () => setEstrategia(prev => ({ ...prev, condicoesCompra: [...prev.condicoesCompra, { clientId: Math.random(), tipoIndicador: 'RSI_CURTO' }] }));
-    const updateCondicaoCompra = (index: number, updated: CondicaoCompraDTO) => { const newCondicoes = [...estrategia.condicoesCompra]; newCondicoes[index] = updated; setEstrategia(prev => ({ ...prev, condicoesCompra: newCondicoes })); };
-    const removeCondicaoCompra = (index: number) => setEstrategia(prev => ({ ...prev, condicoesCompra: prev.condicoesCompra.filter((_, i) => i !== index) }));
-    const addCondicaoVenda = () => setEstrategia(prev => ({ ...prev, condicoesVenda: [...prev.condicoesVenda, { clientId: Math.random(), tipoIndicador: 'RSI_CURTO' }] }));
-    const updateCondicaoVenda = (index: number, updated: CondicaoVendaDTO) => { const newCondicoes = [...estrategia.condicoesVenda]; newCondicoes[index] = updated; setEstrategia(prev => ({ ...prev, condicoesVenda: newCondicoes })); };
-    const removeCondicaoVenda = (index: number) => setEstrategia(prev => ({ ...prev, condicoesVenda: prev.condicoesVenda.filter((_, i) => i !== index) }));
+    const addCondicaoCompra = () => dispatch({ type: 'ADD_CONDICAO', tipo: 'compra' });
+    const updateCondicaoCompra = (index: number, updated: CondicaoCompraDTO) => dispatch({ type: 'UPDATE_CONDICAO', tipo: 'compra', index, payload: updated });
+    const removeCondicaoCompra = (index: number) => dispatch({ type: 'REMOVE_CONDICAO', tipo: 'compra', index });
+    const addCondicaoVenda = () => dispatch({ type: 'ADD_CONDICAO', tipo: 'venda' });
+    const updateCondicaoVenda = (index: number, updated: CondicaoVendaDTO) => dispatch({ type: 'UPDATE_CONDICAO', tipo: 'venda', index, payload: updated });
+    const removeCondicaoVenda = (index: number) => dispatch({ type: 'REMOVE_CONDICAO', tipo: 'venda', index });
 
-    const validateForm = (): boolean => {
+    const validateStep = (step: number): boolean => {
         const newErrors: Record<string, string | null> = {};
-        if (!estrategia.nome.trim()) newErrors.nome = 'O nome da estratégia é obrigatório.';
-        if (estrategia.condicoesCompra.length > 0) {
-            const valorFixo = estrategia.valorOperacaoFixo;
-            const valorPercentual = estrategia.percentualValorOperacao;
-            if ((!valorFixo || Number(valorFixo) <= 0) && (!valorPercentual || Number(valorPercentual) <= 0)) {
-                const errorMsg = "Defina um valor de operação.";
-                newErrors.valorOperacaoFixo = errorMsg;
-                newErrors.percentualValorOperacao = errorMsg;
+        let stepIsValid = true;
+
+        if (step === 0) { // Validação do Nome
+            if (!estrategia.nome.trim()) {
+                newErrors.nome = 'O nome da estratégia é obrigatório.';
+                stepIsValid = false;
             }
-            if (valorFixo && Number(valorFixo) > 0 && !estrategia.tipoMoedaValorOperacao) {
-                newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
+        } else if (step === 2) { // Validação das Regras de Compra
+            if (estrategia.condicoesCompra.length > 0) {
+                const valorFixo = estrategia.valorOperacaoFixo;
+                const valorPercentual = estrategia.percentualValorOperacao;
+                if ((!valorFixo || Number(valorFixo) <= 0) && (!valorPercentual || Number(valorPercentual) <= 0)) {
+                    newErrors.valorOperacaoFixo = "Defina um valor de operação.";
+                    stepIsValid = false;
+                }
+                if (valorFixo && Number(valorFixo) > 0 && !estrategia.tipoMoedaValorOperacao) {
+                    newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
+                    stepIsValid = false;
+                }
             }
+            estrategia.condicoesCompra.forEach((cond) => {
+                if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) stepIsValid = false;
+            });
+        } else if (step === 3) { // Validação das Regras de Venda
+            estrategia.condicoesVenda.forEach((cond) => {
+                if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) stepIsValid = false;
+            });
         }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        setErrors(prev => ({...prev, ...newErrors}));
+        return stepIsValid;
     };
 
-    const handleNext = () => setActiveStep((prev) => prev + 1);
+    const handleNext = () => {
+        if (validateStep(activeStep)) {
+            setActiveStep((prev) => prev + 1);
+        } else {
+            setSnackbar({ open: true, message: 'Corrija os erros ou inconsistências para avançar.', severity: 'error' });
+        }
+    };
     const handleBack = () => setActiveStep((prev) => prev - 1);
     const handleStep = (step: number) => () => setActiveStep(step);
 
     const handleSubmit = async () => {
-        if (!validateForm()) {
-            setSnackbar({ open: true, message: 'Existem erros no formulário. Por favor, revise os campos.', severity: 'error' });
+        if (!validateStep(0) || !validateStep(2) || !validateStep(3)) {
+            setSnackbar({ open: true, message: 'Existem erros no formulário. Por favor, revise todas as etapas.', severity: 'error' });
             return;
         }
         setLoading(true);
@@ -165,13 +245,13 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
         for (const field of numberFields) {
             const value = payload[field];
             if (value !== null && value !== undefined && value !== '') (payload as any)[field] = Number(value);
+            else (payload as any)[field] = null;
         }
         try {
             if (isEditMode) await updateEstrategia(entityId, payload as CriarEstrategiaDTO);
             else await createEstrategia(payload as CriarEstrategiaDTO);
             onSave();
         } catch (error) {
-            console.error("Falha ao salvar estratégia:", error);
             let message = 'Ocorreu um erro inesperado.';
             if (axios.isAxiosError(error) && error.response) message = error.response.data.message || message;
             else if (error instanceof Error) message = error.message;
@@ -197,7 +277,6 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
                 return 'Passo desconhecido';
         }
     };
-
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

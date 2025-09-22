@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Box, Button, Typography, Divider, TextField, Collapse, FormControl, InputLabel, Select, MenuItem, Alert } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import CondicaoCompraForm from '../CondicaoCompraForm';
+import CondicaoForm from '../CondicaoForm';
 import TooltipIcon from '../../../components/common/TooltipIcon';
 import { getTipoMoedaValorOperacaoOptions } from '../../../utils/enumMappings';
 
@@ -24,6 +24,13 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
     } = props;
 
     const tipoMoedaTooltip = "Moeda Base: É a primeira moeda do par (ex: BTC em BTC/USDT). Moeda de Cotação: É a segunda moeda (ex: USDT em BTC/USDT).";
+    const lastConditionRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (lastConditionRef.current) {
+            lastConditionRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    }, [estrategia.condicoesCompra.length]);
 
     return (
         <>
@@ -32,14 +39,17 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                 <Button startIcon={<AddCircleOutlineIcon />} onClick={addCondicaoCompra}>Adicionar</Button>
             </Box>
             {estrategia.condicoesCompra.map((condicao: any, index: number) => (
-                <CondicaoCompraForm
-                    key={condicao.clientId}
-                    index={index}
-                    condicao={condicao}
-                    estrategia={estrategia}
-                    onUpdate={updateCondicaoCompra}
-                    onRemove={removeCondicaoCompra}
-                />
+                <div key={condicao.clientId} ref={index === estrategia.condicoesCompra.length - 1 ? lastConditionRef : null}>
+                    <CondicaoForm
+                        title="Condição de Compra"
+                        index={index}
+                        condicao={condicao}
+                        estrategia={estrategia}
+                        totalCondicoes={estrategia.condicoesCompra.length}
+                        onUpdate={updateCondicaoCompra}
+                        onRemove={removeCondicaoCompra}
+                    />
+                </div>
             ))}
             {estrategia.condicoesCompra.length === 0 && <Alert severity="info">Nenhuma condição de compra adicionada.</Alert>}
             <Divider sx={{ my: 3 }} />

@@ -14,6 +14,8 @@ public class CondicaoVendaUtils {
                 .tipoIndicador(dto.tipoIndicador())
                 .valorIndicador(dto.valorIndicador())
                 .posicaoFaixa(dto.posicaoFaixa())
+                .ordem(dto.ordem())
+                .operadorParaProxima(dto.operadorParaProxima())
                 .build();
     }
 
@@ -24,6 +26,8 @@ public class CondicaoVendaUtils {
                 .tipoIndicador(entidade.getTipoIndicador())
                 .valorIndicador(entidade.getValorIndicador())
                 .posicaoFaixa(entidade.getPosicaoFaixa())
+                .ordem(entidade.getOrdem())
+                .operadorParaProxima(entidade.getOperadorParaProxima())
                 .build();
     }
 }

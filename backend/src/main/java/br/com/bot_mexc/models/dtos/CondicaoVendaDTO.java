@@ -1,5 +1,6 @@
 package br.com.bot_mexc.models.dtos;
 
+import br.com.bot_mexc.models.enums.OperadorLogico;
 import br.com.bot_mexc.models.enums.PosicaoFaixasCompraVenda;
 import br.com.bot_mexc.models.enums.TipoIndicador;
 import lombok.Builder;
@@ -12,6 +13,8 @@ public record CondicaoVendaDTO(
         String idEstrategia,
         TipoIndicador tipoIndicador,
         BigDecimal valorIndicador,
-        PosicaoFaixasCompraVenda posicaoFaixa
+        PosicaoFaixasCompraVenda posicaoFaixa,
+        Integer ordem,
+        OperadorLogico operadorParaProxima
 ) {
 }

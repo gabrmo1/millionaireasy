@@ -26,3 +26,10 @@ export const TipoMoedaValorOperacao = {
 } as const;
 
 export type TipoMoedaValorOperacao = typeof TipoMoedaValorOperacao[keyof typeof TipoMoedaValorOperacao];
+
+export const OperadorLogico = {
+    AND: 'AND',
+    OR: 'OR'
+} as const;
+
+export type OperadorLogico = typeof OperadorLogico[keyof typeof OperadorLogico];

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Box, Button, Typography, Divider, FormControlLabel, Checkbox, Collapse, TextField, Alert } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import CondicaoVendaForm from '../CondicaoVendaForm';
+import CondicaoForm from '../CondicaoForm';
 
 interface Step4Props {
     estrategia: any;
@@ -17,6 +17,14 @@ const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
         estrategia, handleMainChange, handlePercentChange, addCondicaoVenda,
         updateCondicaoVenda, removeCondicaoVenda
     } = props;
+
+    const lastConditionRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (lastConditionRef.current) {
+            lastConditionRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    }, [estrategia.condicoesVenda.length]);
 
     return (
         <>
@@ -35,14 +43,17 @@ const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
                 <Button startIcon={<AddCircleOutlineIcon />} onClick={addCondicaoVenda}>Adicionar</Button>
             </Box>
             {estrategia.condicoesVenda.map((condicao: any, index: number) => (
-                <CondicaoVendaForm
-                    key={condicao.clientId}
-                    index={index}
-                    condicao={condicao}
-                    estrategia={estrategia}
-                    onUpdate={updateCondicaoVenda}
-                    onRemove={removeCondicaoVenda}
-                />
+                <div key={condicao.clientId} ref={index === estrategia.condicoesVenda.length - 1 ? lastConditionRef : null}>
+                    <CondicaoForm
+                        title="Condição de Venda"
+                        index={index}
+                        condicao={condicao}
+                        estrategia={estrategia}
+                        totalCondicoes={estrategia.condicoesVenda.length}
+                        onUpdate={updateCondicaoVenda}
+                        onRemove={removeCondicaoVenda}
+                    />
+                </div>
             ))}
             {estrategia.condicoesVenda.length === 0 && <Alert severity="info">Nenhuma condição de venda por indicador adicionada.</Alert>}
         </>
