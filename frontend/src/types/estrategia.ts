@@ -1,5 +1,4 @@
-// frontend/src/types/estrategia.ts
-import type { PosicaoFaixasCompraVenda, TipoIndicador, TipoMoedaValorOperacao, OperadorLogico } from './enums';
+import type { PosicaoFaixasCompraVenda, TipoIndicador, OperadorLogico } from './enums';
 
 export interface CondicaoCompraDTO {
     id?: string;
@@ -40,7 +39,7 @@ export interface Estrategia {
     periodoSma?: number;
     realizarLeituraVolume: boolean;
     valorOperacaoFixo?: number;
-    tipoMoedaValorOperacao?: TipoMoedaValorOperacao;
+    stablecoin?: string;
     percentualValorOperacao?: number;
     vendaApenasPorLucro?: boolean;
     percentualLucro?: number;

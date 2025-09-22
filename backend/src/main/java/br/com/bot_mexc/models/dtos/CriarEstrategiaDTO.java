@@ -1,7 +1,6 @@
 package br.com.bot_mexc.models.dtos;
 
 import br.com.bot_mexc.models.enums.TipoIndicador;
-import br.com.bot_mexc.models.enums.TipoMoedaValorOperacao;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -34,7 +33,7 @@ public record CriarEstrategiaDTO(
         Boolean realizarLeituraVolume,
         @Positive(message = "O valor fixo da operação deve ser positivo.")
         BigDecimal valorOperacaoFixo,
-        TipoMoedaValorOperacao tipoMoedaValorOperacao,
+        String stablecoin,
         @Positive(message = "O percentual da operação deve ser positivo.")
         BigDecimal percentualValorOperacao,
         Boolean vendaApenasPorLucro,
@@ -43,11 +42,14 @@ public record CriarEstrategiaDTO(
         List<CondicaoVendaDTO> condicoesVenda
 ) {
     public CriarEstrategiaDTO {
-        // Validação dos Parâmetros de Compra
+        boolean hasValor = (Objects.nonNull(valorOperacaoFixo) && valorOperacaoFixo.compareTo(BigDecimal.ZERO) > 0) ||
+                (Objects.nonNull(percentualValorOperacao) && percentualValorOperacao.compareTo(BigDecimal.ZERO) > 0);
+
+        if (hasValor && (Objects.isNull(stablecoin) || stablecoin.isBlank())) {
+            throw new ValidationException("A Stablecoin é obrigatória quando um valor de operação (fixo ou percentual) é definido.");
+        }
+
         if (!CollectionUtils.isEmpty(condicoesCompra)) {
-            if (Objects.nonNull(valorOperacaoFixo) && Objects.isNull(tipoMoedaValorOperacao)) {
-                throw new ValidationException("O tipo de moeda (Base ou Cotação) é obrigatório quando um valor de operação fixo é definido.");
-            }
             if (Objects.isNull(valorOperacaoFixo) && Objects.isNull(percentualValorOperacao)) {
                 throw new ValidationException("Os parâmetros de compra (Valor Fixo ou Percentual) são obrigatórios quando existem condições de compra.");
             }
@@ -75,7 +77,6 @@ public record CriarEstrategiaDTO(
             }
         }
 
-        // Validação da Venda por Lucro
         if (Boolean.TRUE.equals(vendaApenasPorLucro)) {
             if (Objects.isNull(percentualLucro)) {
                 throw new ValidationException("O percentual de lucro é obrigatório quando a venda por lucro está ativada.");

@@ -1,4 +1,4 @@
-import { PosicaoFaixasCompraVenda, TipoIndicador, TipoMoedaValorOperacao } from '../types/enums';
+import { PosicaoFaixasCompraVenda, TipoIndicador } from '../types/enums';
 import { StatusOperacoes } from '../types/operacao';
 
 // Mapeamento para PosicaoFaixasCompraVenda
@@ -40,17 +40,4 @@ export const statusOperacoesLabels: Record<StatusOperacoes, string> = {
     [StatusOperacoes.EM_ANDAMENTO]: 'Em Andamento',
     [StatusOperacoes.PARADO]: 'Parado',
     [StatusOperacoes.FINALIZADO]: 'Finalizado',
-};
-
-// NOVO: Mapeamento para TipoMoedaValorOperacao
-export const tipoMoedaValorOperacaoLabels: Record<TipoMoedaValorOperacao, string> = {
-    [TipoMoedaValorOperacao.BASE]: 'Moeda Base (Ex: BTC em BTC/USDT)',
-    [TipoMoedaValorOperacao.QUOTE]: 'Moeda de Cotação (Ex: USDT em BTC/USDT)',
-};
-
-export const getTipoMoedaValorOperacaoOptions = () => {
-    return (Object.values(TipoMoedaValorOperacao) as TipoMoedaValorOperacao[]).map(value => ({
-        value,
-        label: tipoMoedaValorOperacaoLabels[value],
-    }));
 };

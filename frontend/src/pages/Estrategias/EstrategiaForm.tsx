@@ -9,6 +9,7 @@ import Step4_RegrasVenda from './formSteps/Step4_RegrasVenda';
 import Step5_Revisao from './formSteps/Step5_Revisao';
 
 import { getEstrategiaById, createEstrategia, updateEstrategia } from '../../services/estrategiaService';
+import { getStablecoins } from '../../services/mexcService';
 import type { CondicaoCompraDTO, CondicaoVendaDTO, CriarEstrategiaDTO } from '../../types/estrategia';
 import { TipoIndicador } from '../../types/enums';
 import { formatLeadingZeros } from "../../utils/inputFormatters.ts";
@@ -51,10 +52,8 @@ const getInitialState = (): EstrategiaFormData => ({
     vendaApenasPorLucro: false,
     condicoesCompra: [],
     condicoesVenda: [],
-    tipoMoedaValorOperacao: 'QUOTE',
 });
 
-// --- REDUCER LOGIC ---
 type Action =
     | { type: 'SET_FORM_DATA'; payload: EstrategiaFormData }
     | { type: 'SET_FIELD'; field: string; value: any }
@@ -73,11 +72,10 @@ function estrategiaReducer(state: EstrategiaFormData, action: Action): Estrategi
             const newState = { ...state, [action.name]: action.value };
             if (action.name === 'valorOperacaoFixo' && action.value) {
                 newState.percentualValorOperacao = undefined;
-                if (!newState.tipoMoedaValorOperacao) newState.tipoMoedaValorOperacao = 'QUOTE';
             }
             if (action.name === 'percentualValorOperacao' && action.value) {
                 newState.valorOperacaoFixo = undefined;
-                newState.tipoMoedaValorOperacao = undefined;
+                newState.stablecoin = undefined;
             }
             return newState;
         }
@@ -110,7 +108,6 @@ function estrategiaReducer(state: EstrategiaFormData, action: Action): Estrategi
             return state;
     }
 }
-// --- END OF REDUCER LOGIC ---
 
 const isIndicatorEnabled = (indicator: TipoIndicador, estrategia: EstrategiaFormData): boolean => {
     switch (indicator) {
@@ -134,8 +131,14 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'error' });
     const [errors, setErrors] = useState<Record<string, string | null>>({});
     const [stepErrors, setStepErrors] = useState<boolean[]>([false, false, false, false, false]);
+    const [stablecoins, setStablecoins] = useState<string[]>([]);
 
     useEffect(() => {
+        getStablecoins().then(setStablecoins).catch(err => {
+            console.error("Falha ao buscar stablecoins:", err);
+            setSnackbar({ open: true, message: 'Falha ao carregar lista de stablecoins.', severity: 'error' });
+        });
+
         if (isEditMode) {
             setLoading(true);
             getEstrategiaById(entityId)
@@ -166,23 +169,35 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
     };
 
     const handleValorOperacaoChange = (name: 'valorOperacaoFixo' | 'percentualValorOperacao', value: string | undefined) => {
-        if (errors.valorOperacaoFixo || errors.percentualValorOperacao) setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null, tipoMoedaValorOperacao: null }));
+        if (errors.valorOperacaoFixo || errors.percentualValorOperacao || errors.stablecoin) {
+            setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null, stablecoin: null }));
+        }
         const formattedValue = value !== undefined ? formatLeadingZeros(value) : undefined;
         dispatch({ type: 'SET_VALOR_OPERACAO', name, value: formattedValue });
     };
 
     const handlePercentChange = (name: 'percentualValorOperacao' | 'percentualLucro', value: string, max: number) => {
         const formattedValue = formatLeadingZeros(value);
-        if (name === 'percentualValorOperacao' && (errors.valorOperacaoFixo || errors.percentualValorOperacao)) setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null }));
-        if (name === 'percentualLucro' && errors.percentualLucro) setErrors(prev => ({...prev, percentualLucro: null}));
-        if (formattedValue === '') { handleMainChange(name, ''); return; }
+        if (name === 'percentualValorOperacao' && (errors.valorOperacaoFixo || errors.percentualValorOperacao)) {
+            setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null }));
+        }
+        if (name === 'percentualLucro' && errors.percentualLucro) {
+            setErrors(prev => ({...prev, percentualLucro: null}));
+        }
+        if (formattedValue === '') {
+            handleMainChange(name, '');
+            return;
+        }
         const numValue = Number(formattedValue);
         let finalValue = numValue;
         if (numValue < 0) finalValue = 0;
         if (numValue > max) finalValue = max;
         const finalValueStr = String(finalValue);
-        if (name === 'percentualValorOperacao') handleValorOperacaoChange(name, finalValueStr);
-        else handleMainChange(name, finalValueStr);
+        if (name === 'percentualValorOperacao') {
+            handleValorOperacaoChange(name, finalValueStr);
+        } else {
+            handleMainChange(name, finalValueStr);
+        }
     };
 
     const addCondicaoCompra = () => dispatch({ type: 'ADD_CONDICAO', tipo: 'compra' });
@@ -205,24 +220,27 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
         }
 
         // Etapa 3: Regras de Compra
+        const hasValorFixo = estrategia.valorOperacaoFixo && Number(estrategia.valorOperacaoFixo) > 0;
+        const hasValorPercentual = estrategia.percentualValorOperacao && Number(estrategia.percentualValorOperacao) > 0;
+
         if (estrategia.condicoesCompra.length > 0) {
-            const valorFixo = estrategia.valorOperacaoFixo;
-            const valorPercentual = estrategia.percentualValorOperacao;
-            if ((!valorFixo || Number(valorFixo) <= 0) && (!valorPercentual || Number(valorPercentual) <= 0)) {
+            if (!hasValorFixo && !hasValorPercentual) {
                 newErrors.valorOperacaoFixo = "Defina um valor de operação (fixo ou percentual).";
                 newStepErrors[2] = true;
                 formIsValid = false;
             }
-            if (valorFixo && Number(valorFixo) > 0 && !estrategia.tipoMoedaValorOperacao) {
-                newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
-                newStepErrors[2] = true;
-                formIsValid = false;
-            }
         }
+
+        if ((hasValorFixo || hasValorPercentual) && !estrategia.stablecoin) {
+            newErrors.stablecoin = 'Selecione a Stablecoin, pois um valor de operação foi definido.';
+            newStepErrors[2] = true;
+            formIsValid = false;
+        }
+
         estrategia.condicoesCompra.forEach((cond) => {
             if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) {
                 newStepErrors[2] = true;
-                formIsValid = false; // Inconsistência, mas sem mensagem de campo
+                formIsValid = false;
             }
         });
 
@@ -235,7 +253,7 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
         estrategia.condicoesVenda.forEach((cond) => {
             if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) {
                 newStepErrors[3] = true;
-                formIsValid = false; // Inconsistência, mas sem mensagem de campo
+                formIsValid = false;
             }
         });
 
@@ -243,7 +261,6 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
         setStepErrors(newStepErrors);
         return formIsValid;
     };
-
 
     const handleNext = () => setActiveStep((prev) => prev + 1);
     const handleBack = () => setActiveStep((prev) => prev - 1);
@@ -283,7 +300,7 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
             case 1:
                 return <Step2_ParametrosAnalise formData={estrategia} handleMainChange={handleMainChange} />;
             case 2:
-                return <Step3_RegrasCompra estrategia={estrategia} errors={errors} addCondicaoCompra={addCondicaoCompra} updateCondicaoCompra={updateCondicaoCompra} removeCondicaoCompra={removeCondicaoCompra} handleValorOperacaoChange={handleValorOperacaoChange} handlePercentChange={handlePercentChange} handleMainChange={handleMainChange} />;
+                return <Step3_RegrasCompra stablecoins={stablecoins} estrategia={estrategia} errors={errors} addCondicaoCompra={addCondicaoCompra} updateCondicaoCompra={updateCondicaoCompra} removeCondicaoCompra={removeCondicaoCompra} handleValorOperacaoChange={handleValorOperacaoChange} handlePercentChange={handlePercentChange} handleMainChange={handleMainChange} />;
             case 3:
                 return <Step4_RegrasVenda estrategia={estrategia} errors={errors} handleMainChange={handleMainChange} handlePercentChange={handlePercentChange} addCondicaoVenda={addCondicaoVenda} updateCondicaoVenda={updateCondicaoVenda} removeCondicaoVenda={removeCondicaoVenda} />;
             case 4:

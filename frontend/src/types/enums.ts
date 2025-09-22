@@ -20,13 +20,6 @@ export const TipoIndicador = {
 
 export type TipoIndicador = typeof TipoIndicador[keyof typeof TipoIndicador];
 
-export const TipoMoedaValorOperacao = {
-    BASE: 'BASE',
-    QUOTE: 'QUOTE'
-} as const;
-
-export type TipoMoedaValorOperacao = typeof TipoMoedaValorOperacao[keyof typeof TipoMoedaValorOperacao];
-
 export const OperadorLogico = {
     AND: 'AND',
     OR: 'OR'

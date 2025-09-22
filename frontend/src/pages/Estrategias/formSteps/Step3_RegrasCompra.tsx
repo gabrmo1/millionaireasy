@@ -1,14 +1,13 @@
 import React, { useRef, useEffect } from 'react';
-import { Box, Button, Typography, Divider, TextField, Collapse, FormControl, InputLabel, Select, MenuItem, Alert, FormHelperText } from '@mui/material';
+import { Box, Button, Typography, Divider, TextField, FormControl, InputLabel, Select, MenuItem, Alert, FormHelperText } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CondicaoForm from '../CondicaoForm';
-import TooltipIcon from '../../../components/common/TooltipIcon';
-import { getTipoMoedaValorOperacaoOptions } from '../../../utils/enumMappings';
 
 interface Step3Props {
     estrategia: any;
     errors: Record<string, string | null>;
+    stablecoins: string[];
     addCondicaoCompra: () => void;
     updateCondicaoCompra: (index: number, updated: any) => void;
     removeCondicaoCompra: (index: number) => void;
@@ -19,11 +18,10 @@ interface Step3Props {
 
 const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
     const {
-        estrategia, errors, addCondicaoCompra, updateCondicaoCompra,
+        estrategia, errors, stablecoins, addCondicaoCompra, updateCondicaoCompra,
         removeCondicaoCompra, handleValorOperacaoChange, handleMainChange
     } = props;
 
-    const tipoMoedaTooltip = "Moeda Base: É a primeira moeda do par (ex: BTC em BTC/USDT). Moeda de Cotação: É a segunda moeda (ex: USDT em BTC/USDT).";
     const lastConditionRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -31,6 +29,9 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
             lastConditionRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, [estrategia.condicoesCompra.length]);
+
+    const hasValorPreenchido = (estrategia.valorOperacaoFixo && Number(estrategia.valorOperacaoFixo) > 0) ||
+        (estrategia.percentualValorOperacao && Number(estrategia.percentualValorOperacao) > 0);
 
     return (
         <>
@@ -55,26 +56,21 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
             <Divider sx={{ my: 3 }} />
             <Box>
                 <Typography variant="h6" sx={{ mb: 2 }}>Parâmetros de Compra</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
+                <Grid container spacing={2} alignItems="flex-start">
+                    <Grid item xs={12} sm={6}>
                         <TextField label="Valor Fixo Operação" type="number" size="small" fullWidth value={estrategia.valorOperacaoFixo ?? ''} onChange={(e) => handleValorOperacaoChange('valorOperacaoFixo', e.target.value)} disabled={!!estrategia.percentualValorOperacao} inputProps={{ min: 0 }} error={!!errors.valorOperacaoFixo} helperText={errors.valorOperacaoFixo || ' '} />
                     </Grid>
-                    <Grid item xs={12} sm={4}>
-                        <Collapse in={!!estrategia.valorOperacaoFixo && !estrategia.percentualValorOperacao} sx={{ width: '100%' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <FormControl fullWidth size="small" error={!!errors.tipoMoedaValorOperacao}>
-                                    <InputLabel>Tipo de Moeda</InputLabel>
-                                    <Select name="tipoMoedaValorOperacao" label="Tipo de Moeda" value={estrategia.tipoMoedaValorOperacao ?? ''} onChange={(e) => handleMainChange('tipoMoedaValorOperacao', e.target.value)}>
-                                        {getTipoMoedaValorOperacaoOptions().map(option => ( <MenuItem key={option.value} value={option.value}> {option.label} </MenuItem> ))}
-                                    </Select>
-                                    {errors.tipoMoedaValorOperacao && <FormHelperText>{errors.tipoMoedaValorOperacao}</FormHelperText>}
-                                </FormControl>
-                                <TooltipIcon description={tipoMoedaTooltip} />
-                            </Box>
-                        </Collapse>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
                         <TextField label="% do Saldo na Operação" type="number" size="small" fullWidth value={estrategia.percentualValorOperacao ?? ''} onChange={(e) => props.handlePercentChange('percentualValorOperacao', e.target.value, 100)} disabled={!!estrategia.valorOperacaoFixo} error={!!errors.percentualValorOperacao} helperText={errors.percentualValorOperacao || 'Sempre referente à moeda de cotação.'} />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth size="small" error={!!errors.stablecoin} required={hasValorPreenchido}>
+                            <InputLabel>Stablecoin</InputLabel>
+                            <Select name="stablecoin" label="Stablecoin" value={estrategia.stablecoin ?? ''} onChange={(e) => handleMainChange('stablecoin', e.target.value)}>
+                                {stablecoins.map(option => ( <MenuItem key={option} value={option}> {option} </MenuItem> ))}
+                            </Select>
+                            <FormHelperText>{errors.stablecoin || 'Obrigatório se um valor de operação for definido.'}</FormHelperText>
+                        </FormControl>
                     </Grid>
                 </Grid>
             </Box>

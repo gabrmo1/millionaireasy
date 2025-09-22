@@ -20,86 +20,120 @@ interface OperacaoFormProps {
 }
 
 const steps = ['Seleção do Par', 'Configuração', 'Revisão'];
+const initialState = { intervalo: '15m' };
 
 export default function OperacaoForm({ entityId, onClose, onSave }: OperacaoFormProps) {
     const isEditMode = !!entityId;
     const [activeStep, setActiveStep] = useState(0);
-    const [formData, setFormData] = useState<Partial<CriarOperacaoDTO>>({ intervalo: '15m' });
+    const [formData, setFormData] = useState<Partial<CriarOperacaoDTO>>(initialState);
     const [errors, setErrors] = useState<Record<string, string | null>>({});
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' as const });
     const [stepErrors, setStepErrors] = useState<boolean[]>([false, false, false]);
 
     const [allPairs, setAllPairs] = useState<SymbolInfo[]>([]);
     const [selectedEstrategia, setSelectedEstrategia] = useState<Estrategia | null>(null);
 
+    // Efeito 1: Busca a lista de pares uma vez, quando o componente é montado.
     useEffect(() => {
-        const fetchData = async () => {
+        setLoading(true);
+        getStablecoinPairs()
+            .then(setAllPairs)
+            .catch(err => {
+                console.error("Falha ao buscar pares de moedas:", err);
+                setSnackbar({ open: true, message: 'Não foi possível carregar os pares de moedas.', severity: 'error' });
+            })
+            .finally(() => setLoading(false));
+    }, []);
+
+    // Efeito 2: Carrega os dados para edição ou reseta o formulário para criação.
+    useEffect(() => {
+        if (isEditMode && entityId) {
             setLoading(true);
-            try {
-                const pairsData = await getStablecoinPairs();
-                setAllPairs(pairsData);
-                if (isEditMode && entityId) {
-                    const operacaoData = await getOperacaoById(entityId);
+            getOperacaoById(entityId)
+                .then(async (operacaoData) => {
                     setFormData({
                         par: operacaoData.par,
                         intervalo: operacaoData.intervalo,
                         idOperador: operacaoData.operador.id,
                         idEstrategia: operacaoData.estrategia.id
                     });
-                    setSelectedEstrategia(operacaoData.estrategia);
-                }
-            } catch (err) {
-                console.error("Falha ao carregar dados iniciais:", err);
-                setSnackbar({ open: true, message: 'Não foi possível carregar os dados necessários.', severity: 'error' });
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
+                    const estrategiaData = await getEstrategiaById(operacaoData.estrategia.id);
+                    setSelectedEstrategia(estrategiaData);
+                })
+                .catch(err => console.error("Falha ao carregar operação para edição:", err))
+                .finally(() => setLoading(false));
+        } else {
+            // Reseta o estado para o modo de criação
+            setFormData(initialState);
+            setSelectedEstrategia(null);
+            setErrors({});
+            setStepErrors([false, false, false]);
+            setActiveStep(0);
+        }
     }, [entityId, isEditMode]);
 
-    const handleChange = (name: string, value: any) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: null }));
-        }
+
+    // Efeito 3: Validação cruzada sempre que o par ou a estratégia mudam.
+    useEffect(() => {
+        const validate = () => {
+            if (!formData.par || !selectedEstrategia) {
+                setErrors(prev => ({ ...prev, idEstrategia: null }));
+                return;
+            }
+
+            const quoteAsset = allPairs.find(p => p.symbol === formData.par)?.quoteAsset;
+            const estrategiaStablecoin = selectedEstrategia.stablecoin;
+
+            if (estrategiaStablecoin && quoteAsset && estrategiaStablecoin !== quoteAsset) {
+                const errorMessage = `Incompatível: O par opera com ${quoteAsset}, mas a estratégia usa ${estrategiaStablecoin}.`;
+                setErrors(prev => ({ ...prev, idEstrategia: errorMessage }));
+            } else {
+                setErrors(prev => ({ ...prev, idEstrategia: null }));
+            }
+        };
+        validate();
+    }, [formData.par, selectedEstrategia, allPairs]);
+
+
+    // --- Handlers ---
+    const handlePairChange = (par: string) => {
+        setFormData(prev => ({ ...prev, par: par }));
     };
 
     const handleEstrategiaChange = useCallback(async (estrategiaId: string | null) => {
-        handleChange('idEstrategia', estrategiaId);
+        setFormData(prev => ({ ...prev, idEstrategia: estrategiaId || undefined }));
         if (estrategiaId) {
             try {
                 const estrategiaData = await getEstrategiaById(estrategiaId);
                 setSelectedEstrategia(estrategiaData);
-                if (estrategiaData.valorOperacaoFixo && estrategiaData.tipoMoedaValorOperacao === 'BASE') {
-                    setErrors(prev => ({ ...prev, idEstrategia: 'Incompatível: a estratégia usa MOEDA BASE para valor fixo.' }));
-                } else {
-                    setErrors(prev => ({ ...prev, idEstrategia: null }));
-                }
             } catch (error) {
                 console.error("Falha ao buscar detalhes da estratégia:", error);
                 setSelectedEstrategia(null);
             }
         } else {
             setSelectedEstrategia(null);
-            setErrors(prev => ({ ...prev, idEstrategia: null }));
         }
     }, []);
+
+    const handleChange = (name: string, value: any) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name] && name !== 'idEstrategia') {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
+    };
 
     const validateAllSteps = (): boolean => {
         const newErrors: Record<string, string | null> = {};
         const newStepErrors = [...stepErrors].fill(false);
         let formIsValid = true;
 
-        // Etapa 1: Seleção do Par
         if (!formData.par) {
             newErrors.par = 'Selecione um par de moedas.';
             newStepErrors[0] = true;
             formIsValid = false;
         }
 
-        // Etapa 2: Configuração
         if (!formData.intervalo) {
             newErrors.intervalo = 'Intervalo é obrigatório.';
             newStepErrors[1] = true;
@@ -115,7 +149,7 @@ export default function OperacaoForm({ entityId, onClose, onSave }: OperacaoForm
             newStepErrors[1] = true;
             formIsValid = false;
         }
-        if (errors.idEstrategia) { // Revalida erro assíncrono
+        if (errors.idEstrategia) {
             newErrors.idEstrategia = errors.idEstrategia;
             newStepErrors[1] = true;
             formIsValid = false;
@@ -152,7 +186,7 @@ export default function OperacaoForm({ entityId, onClose, onSave }: OperacaoForm
     const getStepContent = (step: number) => {
         switch (step) {
             case 0:
-                return <Step1_SelecaoPar formData={formData} errors={errors} allPairs={allPairs} onPairChange={(par) => handleChange('par', par)} />;
+                return <Step1_SelecaoPar formData={formData} errors={errors} allPairs={allPairs} onPairChange={handlePairChange} />;
             case 1:
                 return <Step2_ConfiguracaoOperacao formData={formData} errors={errors} onFieldChange={handleChange} onEstrategiaChange={handleEstrategiaChange} />;
             case 2:

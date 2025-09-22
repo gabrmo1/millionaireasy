@@ -34,4 +34,8 @@ public class MexcService {
                 .filter(symbol -> "1".equals(symbol.getStatus()) && STABLECOINS.contains(symbol.getQuoteAsset()))
                 .collect(Collectors.toList());
     }
+
+    public Set<String> getStablecoins() {
+        return STABLECOINS;
+    }
 }

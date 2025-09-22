@@ -4,7 +4,6 @@ import br.com.bot_mexc.builders.OperacaoBuilder;
 import br.com.bot_mexc.models.dtos.CriarOperacaoDTO;
 import br.com.bot_mexc.models.dtos.OperacaoDTO;
 import br.com.bot_mexc.models.entities.Estrategia;
-import br.com.bot_mexc.models.enums.TipoMoedaValorOperacao;
 import br.com.bot_mexc.repositories.EstrategiaRepository;
 import br.com.bot_mexc.repositories.OperacaoRepository;
 import br.com.bot_mexc.repositories.OperadorRepository;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -24,12 +24,14 @@ public class OperacoesService {
     private final OperadorRepository operadorRepository;
     private final OperacaoRepository operacaoRepository;
     private final EstrategiaRepository estrategiaRepository;
+    private final MexcService mexcService;
 
     public OperacoesService(OperacaoRepository operacaoRepository, OperadorRepository operadorRepository,
-                            EstrategiaRepository estrategiaRepository) {
+                            EstrategiaRepository estrategiaRepository, MexcService mexcService) {
         this.operacaoRepository = operacaoRepository;
         this.operadorRepository = operadorRepository;
         this.estrategiaRepository = estrategiaRepository;
+        this.mexcService = mexcService;
     }
 
     public List<OperacaoDTO> findAll() {
@@ -47,11 +49,10 @@ public class OperacoesService {
     public void criarOperacao(CriarOperacaoDTO request) {
         final var operador = operadorRepository.findById(request.idOperador())
                 .orElseThrow(() -> new ValidationException("Operador não encontrado."));
-
         final var estrategia = estrategiaRepository.findById(request.idEstrategia())
                 .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
 
-        validarCompatibilidadeEstrategiaPar(estrategia);
+        validarCompatibilidadeEstrategiaPar(request.par(), estrategia);
 
         operacaoRepository.save(OperacaoBuilder.montarOperacao(request, operador, estrategia));
     }
@@ -60,14 +61,12 @@ public class OperacoesService {
     public void updateOperacao(String id, CriarOperacaoDTO request) {
         final var operacao = operacaoRepository.findById(id)
                 .orElseThrow(() -> new ValidationException("Operação não encontrada."));
-
         final var operador = operadorRepository.findById(request.idOperador())
                 .orElseThrow(() -> new ValidationException("Operador não encontrado."));
-
         final var estrategia = estrategiaRepository.findById(request.idEstrategia())
                 .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
 
-        validarCompatibilidadeEstrategiaPar(estrategia);
+        validarCompatibilidadeEstrategiaPar(request.par(), estrategia);
 
         operacao.setPar(request.par());
         operacao.setIntervalo(request.intervalo());
@@ -85,11 +84,29 @@ public class OperacoesService {
         operacaoRepository.deleteById(id);
     }
 
-    private void validarCompatibilidadeEstrategiaPar(Estrategia estrategia) {
-        if (Objects.nonNull(estrategia.getValorOperacaoFixo()) &&
-                estrategia.getTipoMoedaValorOperacao() == TipoMoedaValorOperacao.BASE) {
+    private void validarCompatibilidadeEstrategiaPar(String par, Estrategia estrategia) {
+        if (Objects.isNull(estrategia.getValorOperacaoFixo())) {
+            return; // Validação só se aplica a operações de valor fixo
+        }
+
+        Set<String> stablecoins = mexcService.getStablecoins();
+        String quoteAsset = "";
+
+        for (String stable : stablecoins) {
+            if (par.endsWith(stable)) {
+                quoteAsset = stable;
+                break;
+            }
+        }
+
+        if (quoteAsset.isEmpty()) {
+            throw new ValidationException("O par selecionado (" + par + ") não é um par de stablecoin válido.");
+        }
+
+        if (!Objects.equals(estrategia.getStablecoin(), quoteAsset)) {
             throw new ValidationException(
-                    "Incompatibilidade: A estratégia está configurada para usar a MOEDA BASE em operações de valor fixo. Para pares com Stablecoins, a estratégia deve ser configurada para usar a MOEDA DE COTAÇÃO (QUOTE)."
+                    "A estratégia selecionada opera com " + estrategia.getStablecoin() +
+                            ", mas o par selecionado (" + par + ") opera com " + quoteAsset + "."
             );
         }
     }

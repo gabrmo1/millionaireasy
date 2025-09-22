@@ -1,6 +1,5 @@
 package br.com.bot_mexc.models.dtos;
 
-import br.com.bot_mexc.models.enums.TipoMoedaValorOperacao;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -26,7 +25,7 @@ public record EstrategiaDTO(
         Integer periodoSma,
         Boolean realizarLeituraVolume,
         BigDecimal valorOperacaoFixo,
-        TipoMoedaValorOperacao tipoMoedaValorOperacao,
+        String stablecoin,
         BigDecimal percentualValorOperacao,
         Boolean vendaApenasPorLucro,
         BigDecimal percentualLucro,
