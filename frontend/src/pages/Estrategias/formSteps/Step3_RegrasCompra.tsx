@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Box, Button, Typography, Divider, TextField, Collapse, FormControl, InputLabel, Select, MenuItem, Alert } from '@mui/material';
+import { Box, Button, Typography, Divider, TextField, Collapse, FormControl, InputLabel, Select, MenuItem, Alert, FormHelperText } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CondicaoForm from '../CondicaoForm';
@@ -67,6 +67,7 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                                     <Select name="tipoMoedaValorOperacao" label="Tipo de Moeda" value={estrategia.tipoMoedaValorOperacao ?? ''} onChange={(e) => handleMainChange('tipoMoedaValorOperacao', e.target.value)}>
                                         {getTipoMoedaValorOperacaoOptions().map(option => ( <MenuItem key={option.value} value={option.value}> {option.label} </MenuItem> ))}
                                     </Select>
+                                    {errors.tipoMoedaValorOperacao && <FormHelperText>{errors.tipoMoedaValorOperacao}</FormHelperText>}
                                 </FormControl>
                                 <TooltipIcon description={tipoMoedaTooltip} />
                             </Box>

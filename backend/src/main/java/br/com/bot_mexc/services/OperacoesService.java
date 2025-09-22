@@ -3,6 +3,8 @@ package br.com.bot_mexc.services;
 import br.com.bot_mexc.builders.OperacaoBuilder;
 import br.com.bot_mexc.models.dtos.CriarOperacaoDTO;
 import br.com.bot_mexc.models.dtos.OperacaoDTO;
+import br.com.bot_mexc.models.entities.Estrategia;
+import br.com.bot_mexc.models.enums.TipoMoedaValorOperacao;
 import br.com.bot_mexc.repositories.EstrategiaRepository;
 import br.com.bot_mexc.repositories.OperacaoRepository;
 import br.com.bot_mexc.repositories.OperadorRepository;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -48,6 +51,8 @@ public class OperacoesService {
         final var estrategia = estrategiaRepository.findById(request.idEstrategia())
                 .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
 
+        validarCompatibilidadeEstrategiaPar(estrategia);
+
         operacaoRepository.save(OperacaoBuilder.montarOperacao(request, operador, estrategia));
     }
 
@@ -61,6 +66,8 @@ public class OperacoesService {
 
         final var estrategia = estrategiaRepository.findById(request.idEstrategia())
                 .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
+
+        validarCompatibilidadeEstrategiaPar(estrategia);
 
         operacao.setPar(request.par());
         operacao.setIntervalo(request.intervalo());
@@ -76,5 +83,14 @@ public class OperacoesService {
             throw new ValidationException("Operação não encontrada.");
         }
         operacaoRepository.deleteById(id);
+    }
+
+    private void validarCompatibilidadeEstrategiaPar(Estrategia estrategia) {
+        if (Objects.nonNull(estrategia.getValorOperacaoFixo()) &&
+                estrategia.getTipoMoedaValorOperacao() == TipoMoedaValorOperacao.BASE) {
+            throw new ValidationException(
+                    "Incompatibilidade: A estratégia está configurada para usar a MOEDA BASE em operações de valor fixo. Para pares com Stablecoins, a estratégia deve ser configurada para usar a MOEDA DE COTAÇÃO (QUOTE)."
+            );
+        }
     }
 }

@@ -5,6 +5,7 @@ import CondicaoForm from '../CondicaoForm';
 
 interface Step4Props {
     estrategia: any;
+    errors: Record<string, string | null>;
     handleMainChange: (name: string, value: any) => void;
     handlePercentChange: (name: 'percentualValorOperacao' | 'percentualLucro', value: string, max: number) => void;
     addCondicaoVenda: () => void;
@@ -14,7 +15,7 @@ interface Step4Props {
 
 const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
     const {
-        estrategia, handleMainChange, handlePercentChange, addCondicaoVenda,
+        estrategia, errors, handleMainChange, handlePercentChange, addCondicaoVenda,
         updateCondicaoVenda, removeCondicaoVenda
     } = props;
 
@@ -33,7 +34,17 @@ const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
                 <FormControlLabel control={<Checkbox checked={!!estrategia.vendaApenasPorLucro} onChange={(e) => handleMainChange('vendaApenasPorLucro', e.target.checked)} name="vendaApenasPorLucro" size="small" />} label="Efetuar venda somente sobre % de lucro" />
                 <Collapse in={!!estrategia.vendaApenasPorLucro} timeout="auto" unmountOnExit>
                     <Box sx={{ pl: 2, pt: 1.5, ml: 1.5, mt: 1 }}>
-                        <TextField label="% de Lucro para Venda" type="number" size="small" fullWidth value={estrategia.percentualLucro ?? ''} onChange={(e) => handlePercentChange('percentualLucro', e.target.value, 9999)} sx={{ maxWidth: '300px' }} />
+                        <TextField
+                            label="% de Lucro para Venda"
+                            type="number"
+                            size="small"
+                            fullWidth
+                            value={estrategia.percentualLucro ?? ''}
+                            onChange={(e) => handlePercentChange('percentualLucro', e.target.value, 9999)}
+                            sx={{ maxWidth: '300px' }}
+                            error={!!errors.percentualLucro}
+                            helperText={errors.percentualLucro || ' '}
+                        />
                     </Box>
                 </Collapse>
             </Box>

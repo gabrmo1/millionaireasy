@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Box, Button, CircularProgress, Alert, Snackbar, Stepper, Step, StepButton } from '@mui/material';
+import { Box, Button, CircularProgress, Alert, Snackbar, Stepper, Step, StepButton, StepLabel } from '@mui/material';
 import axios from 'axios';
 
 import Step1_InfoGerais from './formSteps/Step1_InfoGerais';
@@ -133,6 +133,7 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
     const [loading, setLoading] = useState<boolean>(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'error' });
     const [errors, setErrors] = useState<Record<string, string | null>>({});
+    const [stepErrors, setStepErrors] = useState<boolean[]>([false, false, false, false, false]);
 
     useEffect(() => {
         if (isEditMode) {
@@ -173,6 +174,7 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
     const handlePercentChange = (name: 'percentualValorOperacao' | 'percentualLucro', value: string, max: number) => {
         const formattedValue = formatLeadingZeros(value);
         if (name === 'percentualValorOperacao' && (errors.valorOperacaoFixo || errors.percentualValorOperacao)) setErrors(prev => ({ ...prev, valorOperacaoFixo: null, percentualValorOperacao: null }));
+        if (name === 'percentualLucro' && errors.percentualLucro) setErrors(prev => ({...prev, percentualLucro: null}));
         if (formattedValue === '') { handleMainChange(name, ''); return; }
         const numValue = Number(formattedValue);
         let finalValue = numValue;
@@ -190,53 +192,66 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
     const updateCondicaoVenda = (index: number, updated: CondicaoVendaDTO) => dispatch({ type: 'UPDATE_CONDICAO', tipo: 'venda', index, payload: updated });
     const removeCondicaoVenda = (index: number) => dispatch({ type: 'REMOVE_CONDICAO', tipo: 'venda', index });
 
-    const validateStep = (step: number): boolean => {
+    const validateAllSteps = (): boolean => {
         const newErrors: Record<string, string | null> = {};
-        let stepIsValid = true;
+        const newStepErrors = [...stepErrors].fill(false);
+        let formIsValid = true;
 
-        if (step === 0) { // Validação do Nome
-            if (!estrategia.nome.trim()) {
-                newErrors.nome = 'O nome da estratégia é obrigatório.';
-                stepIsValid = false;
-            }
-        } else if (step === 2) { // Validação das Regras de Compra
-            if (estrategia.condicoesCompra.length > 0) {
-                const valorFixo = estrategia.valorOperacaoFixo;
-                const valorPercentual = estrategia.percentualValorOperacao;
-                if ((!valorFixo || Number(valorFixo) <= 0) && (!valorPercentual || Number(valorPercentual) <= 0)) {
-                    newErrors.valorOperacaoFixo = "Defina um valor de operação.";
-                    stepIsValid = false;
-                }
-                if (valorFixo && Number(valorFixo) > 0 && !estrategia.tipoMoedaValorOperacao) {
-                    newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
-                    stepIsValid = false;
-                }
-            }
-            estrategia.condicoesCompra.forEach((cond) => {
-                if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) stepIsValid = false;
-            });
-        } else if (step === 3) { // Validação das Regras de Venda
-            estrategia.condicoesVenda.forEach((cond) => {
-                if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) stepIsValid = false;
-            });
+        // Etapa 1: Informações Gerais
+        if (!estrategia.nome.trim()) {
+            newErrors.nome = 'O nome da estratégia é obrigatório.';
+            newStepErrors[0] = true;
+            formIsValid = false;
         }
-        setErrors(prev => ({...prev, ...newErrors}));
-        return stepIsValid;
+
+        // Etapa 3: Regras de Compra
+        if (estrategia.condicoesCompra.length > 0) {
+            const valorFixo = estrategia.valorOperacaoFixo;
+            const valorPercentual = estrategia.percentualValorOperacao;
+            if ((!valorFixo || Number(valorFixo) <= 0) && (!valorPercentual || Number(valorPercentual) <= 0)) {
+                newErrors.valorOperacaoFixo = "Defina um valor de operação (fixo ou percentual).";
+                newStepErrors[2] = true;
+                formIsValid = false;
+            }
+            if (valorFixo && Number(valorFixo) > 0 && !estrategia.tipoMoedaValorOperacao) {
+                newErrors.tipoMoedaValorOperacao = 'Selecione o tipo de moeda.';
+                newStepErrors[2] = true;
+                formIsValid = false;
+            }
+        }
+        estrategia.condicoesCompra.forEach((cond) => {
+            if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) {
+                newStepErrors[2] = true;
+                formIsValid = false; // Inconsistência, mas sem mensagem de campo
+            }
+        });
+
+        // Etapa 4: Regras de Venda
+        if (estrategia.vendaApenasPorLucro && (!estrategia.percentualLucro || Number(estrategia.percentualLucro) <= 0)) {
+            newErrors.percentualLucro = 'O percentual de lucro deve ser maior que zero.';
+            newStepErrors[3] = true;
+            formIsValid = false;
+        }
+        estrategia.condicoesVenda.forEach((cond) => {
+            if (!isIndicatorEnabled(cond.tipoIndicador, estrategia)) {
+                newStepErrors[3] = true;
+                formIsValid = false; // Inconsistência, mas sem mensagem de campo
+            }
+        });
+
+        setErrors(newErrors);
+        setStepErrors(newStepErrors);
+        return formIsValid;
     };
 
-    const handleNext = () => {
-        if (validateStep(activeStep)) {
-            setActiveStep((prev) => prev + 1);
-        } else {
-            setSnackbar({ open: true, message: 'Corrija os erros ou inconsistências para avançar.', severity: 'error' });
-        }
-    };
+
+    const handleNext = () => setActiveStep((prev) => prev + 1);
     const handleBack = () => setActiveStep((prev) => prev - 1);
     const handleStep = (step: number) => () => setActiveStep(step);
 
     const handleSubmit = async () => {
-        if (!validateStep(0) || !validateStep(2) || !validateStep(3)) {
-            setSnackbar({ open: true, message: 'Existem erros no formulário. Por favor, revise todas as etapas.', severity: 'error' });
+        if (!validateAllSteps()) {
+            setSnackbar({ open: true, message: 'Existem erros no formulário. Verifique as etapas marcadas em vermelho.', severity: 'error' });
             return;
         }
         setLoading(true);
@@ -270,7 +285,7 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
             case 2:
                 return <Step3_RegrasCompra estrategia={estrategia} errors={errors} addCondicaoCompra={addCondicaoCompra} updateCondicaoCompra={updateCondicaoCompra} removeCondicaoCompra={removeCondicaoCompra} handleValorOperacaoChange={handleValorOperacaoChange} handlePercentChange={handlePercentChange} handleMainChange={handleMainChange} />;
             case 3:
-                return <Step4_RegrasVenda estrategia={estrategia} handleMainChange={handleMainChange} handlePercentChange={handlePercentChange} addCondicaoVenda={addCondicaoVenda} updateCondicaoVenda={updateCondicaoVenda} removeCondicaoVenda={removeCondicaoVenda} />;
+                return <Step4_RegrasVenda estrategia={estrategia} errors={errors} handleMainChange={handleMainChange} handlePercentChange={handlePercentChange} addCondicaoVenda={addCondicaoVenda} updateCondicaoVenda={updateCondicaoVenda} removeCondicaoVenda={removeCondicaoVenda} />;
             case 4:
                 return <Step5_Revisao estrategia={estrategia} />;
             default:
@@ -282,9 +297,9 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Stepper nonLinear activeStep={activeStep} sx={{ px: 2, pt: 2, mb: 3 }}>
                 {steps.map((label, index) => (
-                    <Step key={label}>
+                    <Step key={label} completed={false}>
                         <StepButton color="inherit" onClick={handleStep(index)}>
-                            {label}
+                            <StepLabel error={stepErrors[index]}>{label}</StepLabel>
                         </StepButton>
                     </Step>
                 ))}

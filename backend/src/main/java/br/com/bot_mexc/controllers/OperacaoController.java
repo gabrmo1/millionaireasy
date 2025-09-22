@@ -30,7 +30,7 @@ public class OperacaoController {
         return ResponseEntity.ok(operacoesService.findById(id));
     }
 
-    @PostMapping("/criar")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Void> criarOperacao(@RequestBody @Valid CriarOperacaoDTO request) {
         operacoesService.criarOperacao(request);

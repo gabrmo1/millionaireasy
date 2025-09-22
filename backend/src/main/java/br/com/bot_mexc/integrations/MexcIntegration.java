@@ -1,6 +1,7 @@
 package br.com.bot_mexc.integrations;
 
 import br.com.bot_mexc.models.dtos.ValorMoedaDTO;
+import br.com.bot_mexc.models.dtos.mexc.ExchangeInfoDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,4 +20,7 @@ public interface MexcIntegration {
 
     @GetMapping("/api/v3/ticker/price")
     ValorMoedaDTO obterValorAtualMoeda(@RequestParam("symbol") String symbol);
+
+    @GetMapping("/api/v3/exchangeInfo")
+    ExchangeInfoDTO getExchangeInfo();
 }
