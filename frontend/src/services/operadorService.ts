@@ -12,7 +12,7 @@ export const getOperadorById = async (id: string): Promise<Operador> => {
 };
 
 export const createOperador = async (operador: CriarOperadorDTO): Promise<void> => {
-    await api.post('/v1/operadores/criar', operador);
+    await api.post('/v1/operadores', operador);
 };
 
 export const updateOperador = async (id: string, operador: CriarOperadorDTO): Promise<void> => {

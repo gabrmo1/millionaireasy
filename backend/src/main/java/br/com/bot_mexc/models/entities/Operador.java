@@ -1,6 +1,8 @@
 package br.com.bot_mexc.models.entities;
 
+import br.com.bot_mexc.configs.security.StringCryptoConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.*;
@@ -20,6 +22,7 @@ public class Operador extends BaseEntity {
     String accessKey;
 
     @Column(name = "secret_key", nullable = false)
+    @Convert(converter = StringCryptoConverter.class)
     String secretKey;
 
 }

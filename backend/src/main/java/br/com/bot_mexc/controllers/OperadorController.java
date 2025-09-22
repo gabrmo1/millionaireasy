@@ -32,7 +32,7 @@ public class OperadorController {
         return ResponseEntity.ok(operadorService.findById(id));
     }
 
-    @PostMapping("/criar")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Void> criarOperador(@RequestBody @Valid CriarOperadorDTO request) {
         operadorService.criarOperador(request);

@@ -2,6 +2,7 @@ package br.com.bot_mexc.handlers;
 
 import br.com.bot_mexc.models.dtos.errors.ErrorResponseDTO;
 import jakarta.validation.ValidationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -22,6 +23,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleValidationException(ValidationException ex, WebRequest request) {
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(ex.getMessage(), LocalDateTime.now());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        String message = "Operação não pôde ser concluída devido a uma restrição de dados. Verifique se o item não está sendo utilizado em outro lugar.";
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(message, LocalDateTime.now());
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409 Conflict é um bom status para este caso
     }
 
     @Override

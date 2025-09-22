@@ -26,6 +26,7 @@ repositories {
 extra["springCloudVersion"] = "2025.0.0"
 
 dependencies {
+	implementation("com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.5")
 	implementation("org.springframework.boot:spring-boot-starter-aop")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("io.jsonwebtoken:jjwt-api:0.11.5")

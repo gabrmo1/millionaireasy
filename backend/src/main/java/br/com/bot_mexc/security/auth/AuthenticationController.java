@@ -1,15 +1,15 @@
 package br.com.bot_mexc.security.auth;
 
+import br.com.bot_mexc.models.entities.Usuario;
 import br.com.bot_mexc.security.dtos.AuthenticationResponse;
 import br.com.bot_mexc.security.dtos.LoginRequest;
 import br.com.bot_mexc.security.dtos.RegisterRequest;
+import br.com.bot_mexc.security.dtos.UsuarioDTO;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,5 +38,10 @@ public class AuthenticationController {
     public ResponseEntity<Void> logout(HttpServletResponse response) {
         service.logout(response);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioDTO> getCurrentUser(@AuthenticationPrincipal Usuario userDetails) {
+        return ResponseEntity.ok(UsuarioDTO.fromEntity(userDetails));
     }
 }

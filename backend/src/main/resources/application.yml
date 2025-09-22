@@ -21,3 +21,9 @@ application:
     jwt:
       secret-key: 8a4f9a0b9a8d0c1e3f5a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e
       expiration: 86400000 # 24 horas em milissegundos
+
+jasypt:
+  encryptor:
+    password: "${JASYPT_ENCRYPTOR_PASSWORD:hardcodedDefaultPasswordForDevOnly}"
+    algorithm: PBEWithMD5AndDES
+    iv-generator-classname: org.jasypt.iv.NoIvGenerator

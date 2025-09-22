@@ -12,3 +12,8 @@ export const register = async (userData: RegisterRequest): Promise<void> => {
 export const logout = async (): Promise<void> => {
     await api.post('/api/v1/auth/logout');
 };
+
+export const checkSession = async (): Promise<any> => {
+    const { data } = await api.get('/api/v1/auth/me');
+    return data;
+};
