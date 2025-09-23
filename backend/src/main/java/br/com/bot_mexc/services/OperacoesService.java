@@ -61,14 +61,16 @@ public class OperacoesService {
 
     @Transactional
     public void updateOperacao(String id, CriarOperacaoDTO request) {
+        final var idEstrategia = request.idEstrategia();
         final var operacao = operacaoRepository.findById(id)
                 .orElseThrow(() -> new ValidationException("Operação não encontrada."));
         final var operador = operadorRepository.findById(request.idOperador())
                 .orElseThrow(() -> new ValidationException("Operador não encontrado."));
-        final var estrategia = estrategiaRepository.findById(request.idEstrategia())
-                .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
+        final var estrategia = idEstrategia != null ? estrategiaRepository.findById(request.idEstrategia())
+                .orElse(null) : null;
 
-        validarCompatibilidadeEstrategiaPar(request.par(), estrategia);
+        if (estrategia != null)
+            validarCompatibilidadeEstrategiaPar(request.par(), estrategia);
 
         operacao.setPar(request.par());
         operacao.setIntervalo(request.intervalo());
