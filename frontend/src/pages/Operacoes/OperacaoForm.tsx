@@ -56,7 +56,7 @@ export default function OperacaoForm({ entityId, onClose, onSave }: OperacaoForm
                         par: operacaoData.par,
                         intervalo: operacaoData.intervalo,
                         idOperador: operacaoData.operador.id,
-                        idEstrategia: operacaoData.estrategia.id
+                        idEstrategia: operacaoData.estrategia?.id
                     });
                     const estrategiaData = await getEstrategiaById(operacaoData.estrategia.id);
                     setSelectedEstrategia(estrategiaData);
