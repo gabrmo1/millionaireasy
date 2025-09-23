@@ -10,7 +10,7 @@ import java.util.List;
 @Repository
 public interface OperacaoRepository extends JpaRepository<Operacao, String> {
 
-    @Query("SELECT o FROM Operacao o JOIN FETCH o.operador JOIN FETCH o.estrategia")
+    @Query("SELECT o FROM Operacao o JOIN FETCH o.operador LEFT JOIN FETCH o.estrategia")
     List<Operacao> findAllEagerly();
 
 }

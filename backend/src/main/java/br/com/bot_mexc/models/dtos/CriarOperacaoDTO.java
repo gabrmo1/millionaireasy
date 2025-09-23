@@ -18,8 +18,8 @@ public record CriarOperacaoDTO(
         @NotBlank
         String idOperador,
 
-        @NotEmpty
-        @NotBlank
+//        @NotEmpty
+//        @NotBlank
         String idEstrategia
 
 ) {

@@ -36,7 +36,7 @@ public class Operacao extends BaseEntity {
     Operador operador;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_estrategia", nullable = false)
+    @JoinColumn(name = "id_estrategia")
     Estrategia estrategia;
 
 }

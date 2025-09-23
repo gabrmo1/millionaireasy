@@ -144,11 +144,11 @@ export default function OperacaoForm({ entityId, onClose, onSave }: OperacaoForm
             newStepErrors[1] = true;
             formIsValid = false;
         }
-        if (!formData.idEstrategia) {
-            newErrors.idEstrategia = 'Estratégia é obrigatória.';
-            newStepErrors[1] = true;
-            formIsValid = false;
-        }
+        // if (!formData.idEstrategia) {
+        //     newErrors.idEstrategia = 'Estratégia é obrigatória.';
+        //     newStepErrors[1] = true;
+        //     formIsValid = false;
+        // }
         if (errors.idEstrategia) {
             newErrors.idEstrategia = errors.idEstrategia;
             newStepErrors[1] = true;
