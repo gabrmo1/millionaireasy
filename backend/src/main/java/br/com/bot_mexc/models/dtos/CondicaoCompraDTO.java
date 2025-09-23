@@ -1,8 +1,8 @@
 package br.com.bot_mexc.models.dtos;
 
+import br.com.bot_mexc.models.enums.OperadorComparacao;
 import br.com.bot_mexc.models.enums.OperadorLogico;
-import br.com.bot_mexc.models.enums.PosicaoFaixasCompraVenda;
-import br.com.bot_mexc.models.enums.TipoIndicador;
+import br.com.bot_mexc.models.enums.TipoOperando;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -11,10 +11,13 @@ import java.math.BigDecimal;
 public record CondicaoCompraDTO(
         String id,
         String idEstrategia,
-        TipoIndicador tipoIndicador,
-        BigDecimal valorIndicador,
-        PosicaoFaixasCompraVenda posicaoFaixa,
         Integer ordem,
-        OperadorLogico operadorParaProxima
-) {
-}
+        OperadorLogico operadorParaProxima,
+        TipoOperando operandoATipo,
+        String operandoAReferencia,
+        BigDecimal operandoAValor,
+        OperadorComparacao operador,
+        TipoOperando operandoBTipo,
+        String operandoBReferencia,
+        BigDecimal operandoBValor
+) {}

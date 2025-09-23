@@ -1,48 +1,41 @@
-import type { PosicaoFaixasCompraVenda, TipoIndicador, OperadorLogico } from './enums';
+import type { TipoIndicador, OperadorLogico, TipoOperando, OperadorComparacao } from './enums';
 
-export interface CondicaoCompraDTO {
+export interface IndicadorConfigDTO {
     id?: string;
-    clientId: number;
+    clientId: number; // Apenas para controle no frontend
+    alias: string;
     tipoIndicador: TipoIndicador;
-    valorIndicador?: number;
-    posicaoFaixa?: PosicaoFaixasCompraVenda;
-    ordem: number;
-    operadorParaProxima?: OperadorLogico;
+    parametros: {
+        [key: string]: number;
+    };
 }
 
-export interface CondicaoVendaDTO {
+export interface CondicaoDTO {
     id?: string;
-    clientId: number;
-    tipoIndicador: TipoIndicador;
-    valorIndicador?: number;
-    posicaoFaixa?: PosicaoFaixasCompraVenda;
+    clientId: number; // Apenas para controle no frontend
     ordem: number;
     operadorParaProxima?: OperadorLogico;
+    operandoATipo: TipoOperando;
+    operandoAReferencia?: string;
+    operandoAValor?: number;
+    operador: OperadorComparacao;
+    operandoBTipo: TipoOperando;
+    operandoBReferencia?: string;
+    operandoBValor?: number;
 }
+
+export type CondicaoCompraDTO = CondicaoDTO;
+export type CondicaoVendaDTO = CondicaoDTO;
 
 export interface Estrategia {
     id: string;
     nome: string;
-    utilizarRsiCurto: boolean;
-    periodoRsiCurto?: number;
-    utilizarRsiMedio: boolean;
-    periodoRsiMedio?: number;
-    utilizarRsiLongo: boolean;
-    periodoRsiLongo?: number;
-    utilizarRsiEstocastico: boolean;
-    periodoRsiEstocastico?: number;
-    suavizacaoRsiEstocasticoD?: number;
-    suavizacaoRsiEstocasticoK?: number;
-    utilizarEma: boolean;
-    periodoEma?: number;
-    utilizarSma: boolean;
-    periodoSma?: number;
-    realizarLeituraVolume: boolean;
     valorOperacaoFixo?: number;
     stablecoin?: string;
     percentualValorOperacao?: number;
     vendaApenasPorLucro?: boolean;
     percentualLucro?: number;
+    indicadoresConfig: IndicadorConfigDTO[];
     condicoesCompra: CondicaoCompraDTO[];
     condicoesVenda: CondicaoVendaDTO[];
 }

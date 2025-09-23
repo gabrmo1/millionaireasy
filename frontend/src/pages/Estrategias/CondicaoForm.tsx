@@ -1,149 +1,128 @@
 import React from 'react';
-import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField, FormHelperText } from '@mui/material';
+import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import DeleteIcon from '@mui/icons-material/Delete';
-import type { CondicaoCompraDTO, CondicaoVendaDTO, Estrategia } from '../../types/estrategia';
-import { TipoIndicador, OperadorLogico } from '../../types/enums';
-import { getTipoIndicadorOptions, getPosicaoFaixasOptions } from '../../utils/enumMappings';
-import { formatLeadingZeros } from "../../utils/inputFormatters.ts";
-
-type Condicao = CondicaoCompraDTO | CondicaoVendaDTO;
+import { OperadorLogico } from '../../types/enums';
+import type { CondicaoDTO, IndicadorConfigDTO } from '../../types/estrategia';
+import { getTipoOperandoOptions, getOperadorComparacaoOptions } from '../../utils/enumMappings';
 
 interface CondicaoFormProps {
-    condicao: Condicao;
-    estrategia: Omit<Estrategia, 'id'>;
+    condicao: CondicaoDTO;
     index: number;
     totalCondicoes: number;
-    onUpdate: (index: number, updatedCondicao: Condicao) => void;
+    indicadores: IndicadorConfigDTO[];
+    onUpdate: (index: number, updatedCondicao: CondicaoDTO) => void;
     onRemove: (index: number) => void;
-    title: string;
+    tipoCondicao: 'Compra' | 'Venda';
+    errors: Record<string, string | null>;
 }
 
-const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, estrategia, index, totalCondicoes, onUpdate, onRemove, title }) => {
-
-    const rsiIndicators = new Set<TipoIndicador>([
-        TipoIndicador.RSI_CURTO,
-        TipoIndicador.RSI_MEDIO,
-        TipoIndicador.RSI_LONGO,
-        TipoIndicador.RSI_ESTOCASTICO_K,
-        TipoIndicador.RSI_ESTOCASTICO_D,
-    ]);
-
-    const isIndicatorEnabled = (indicator: TipoIndicador): boolean => {
-        switch (indicator) {
-            case TipoIndicador.RSI_CURTO: return estrategia.utilizarRsiCurto;
-            case TipoIndicador.RSI_MEDIO: return estrategia.utilizarRsiMedio;
-            case TipoIndicador.RSI_LONGO: return estrategia.utilizarRsiLongo;
-            case TipoIndicador.RSI_ESTOCASTICO_K:
-            case TipoIndicador.RSI_ESTOCASTICO_D: return estrategia.utilizarRsiEstocastico;
-            case TipoIndicador.EMA: return estrategia.utilizarEma;
-            case TipoIndicador.SMA: return estrategia.utilizarSma;
-            case TipoIndicador.VOLUME: return estrategia.realizarLeituraVolume;
-            default: return false;
-        }
+const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondicoes, indicadores, onUpdate, onRemove, tipoCondicao, errors }) => {
+    const handleChange = (field: keyof CondicaoDTO, value: any) => {
+        onUpdate(index, { ...condicao, [field]: value });
     };
 
-    const isCurrentIndicatorInvalid = condicao.tipoIndicador && !isIndicatorEnabled(condicao.tipoIndicador);
+    const renderOperandoInput = (lado: 'A' | 'B') => {
+        const tipoKey = lado === 'A' ? 'operandoATipo' : 'operandoBTipo';
+        const refKey = lado === 'A' ? 'operandoAReferencia' : 'operandoBReferencia';
+        const valorKey = lado === 'A' ? 'operandoAValor' : 'operandoBValor';
+        const errorKey = `condicao_${tipoCondicao.toLowerCase()}_${index}_valor_${lado.toLowerCase()}`;
 
-    const handleChange = (name: string, value: any) => {
-        onUpdate(index, { ...condicao, [name]: value });
+        const inputComponent = () => {
+            switch (condicao[tipoKey]) {
+                case 'INDICADOR':
+                    return (
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Indicador</InputLabel>
+                            <Select
+                                value={condicao[refKey] || ''}
+                                label="Indicador"
+                                onChange={(e) => handleChange(refKey, e.target.value)}
+                            >
+                                {indicadores.map(i => <MenuItem key={i.alias} value={i.alias}>{i.alias}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                    );
+                case 'VALOR_FIXO':
+                    return (
+                        <TextField
+                            label="Valor"
+                            type="number"
+                            size="small"
+                            fullWidth
+                            value={condicao[valorKey] ?? ''}
+                            onChange={(e) => handleChange(valorKey, e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                            error={!!errors[errorKey]}
+                            helperText={errors[errorKey] || ' '}
+                        />
+                    );
+                case 'PRECO_FECHAMENTO':
+                default:
+                    return null;
+            }
+        };
+
+        return condicao[tipoKey] !== 'PRECO_FECHAMENTO' ? <Box mt={1.5}>{inputComponent()}</Box> : null;
     };
 
-    const handleIndicatorValueChange = (value: string) => {
-        const formattedValue = formatLeadingZeros(value);
-        const isRsi = rsiIndicators.has(condicao.tipoIndicador);
-
-        if (isRsi) {
-            const numValue = Number(formattedValue);
-            let finalValue: number | string = numValue;
-            if (numValue < 0) finalValue = 0;
-            if (numValue > 100) finalValue = 100;
-            handleChange('valorIndicador', String(finalValue));
-        } else {
-            handleChange('valorIndicador', formattedValue);
-        }
-    };
-
-    const tipoIndicadorOptions = getTipoIndicadorOptions();
-    const posicaoFaixasOptions = getPosicaoFaixasOptions();
     const isLastCondition = index === totalCondicoes - 1;
 
     return (
         <>
-            <Paper elevation={3} sx={{ p: 2, border: isCurrentIndicatorInvalid ? '1px solid red' : 'none' }}>
+            <Paper elevation={3} sx={{ p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6">{title} #{index + 1}</Typography>
-                    <IconButton onClick={() => onRemove(index)} color="error">
-                        <DeleteIcon />
-                    </IconButton>
+                    <Typography variant="h6">Condição de {tipoCondicao} #{index + 1}</Typography>
+                    <IconButton onClick={() => onRemove(index)} color="error"><DeleteIcon /></IconButton>
                 </Box>
-                <Grid container spacing={2}>
-                    <Grid item xs={12}>
+                <Grid container spacing={2} alignItems="flex-start">
+                    <Grid item xs={12} sm={5}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>Indicador</InputLabel>
+                            <InputLabel>Operando A</InputLabel>
                             <Select
-                                value={condicao.tipoIndicador || ''}
-                                label="Indicador"
-                                onChange={(e) => handleChange('tipoIndicador', e.target.value)}
-                                error={isCurrentIndicatorInvalid}
+                                value={condicao.operandoATipo || ''}
+                                label="Operando A"
+                                onChange={(e) => handleChange('operandoATipo', e.target.value)}
                             >
-                                {tipoIndicadorOptions.map(opt => (
-                                    <MenuItem key={opt.value} value={opt.value} disabled={!isIndicatorEnabled(opt.value)}>
-                                        {opt.label}
-                                    </MenuItem>
-                                ))}
+                                {getTipoOperandoOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
                             </Select>
-                            {isCurrentIndicatorInvalid && (
-                                <FormHelperText error>
-                                    Este indicador não está ativo na configuração da estratégia.
-                                </FormHelperText>
-                            )}
+                        </FormControl>
+                        {renderOperandoInput('A')}
+                    </Grid>
+                    <Grid item xs={12} sm={2} sx={{ pt: { xs: 2, sm: '16px !important' } }}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Operador</InputLabel>
+                            <Select
+                                value={condicao.operador || ''}
+                                label="Operador"
+                                onChange={(e) => handleChange('operador', e.target.value)}
+                            >
+                                {getOperadorComparacaoOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                            </Select>
                         </FormControl>
                     </Grid>
-                    {condicao.tipoIndicador && (
-                        <>
-                            <Grid item xs={6}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Posição</InputLabel>
-                                    <Select
-                                        value={condicao.posicaoFaixa || ''}
-                                        label="Posição"
-                                        onChange={(e) => handleChange('posicaoFaixa', e.target.value)}
-                                    >
-                                        {posicaoFaixasOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <TextField
-                                    label="Valor do Indicador"
-                                    type="number"
-                                    size="small"
-                                    fullWidth
-                                    value={condicao.valorIndicador ?? ''}
-                                    onChange={(e) => handleIndicatorValueChange(e.target.value)}
-                                />
-                            </Grid>
-                        </>
-                    )}
+                    <Grid item xs={12} sm={5}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Operando B</InputLabel>
+                            <Select
+                                value={condicao.operandoBTipo || ''}
+                                label="Operando B"
+                                onChange={(e) => handleChange('operandoBTipo', e.target.value)}
+                            >
+                                {getTipoOperandoOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                        {renderOperandoInput('B')}
+                    </Grid>
                 </Grid>
             </Paper>
 
             {!isLastCondition && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', my: -1.5, zIndex: 2, position: 'relative' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 1, zIndex: 2, position: 'relative' }}>
                     <FormControl size="small" sx={{ minWidth: 80 }}>
                         <Select
                             value={condicao.operadorParaProxima || 'AND'}
                             onChange={(e) => handleChange('operadorParaProxima', e.target.value as OperadorLogico)}
-                            sx={{
-                                borderRadius: '50px',
-                                '& .MuiSelect-select': {
-                                    py: 0.5,
-                                    px: 2,
-                                    fontWeight: 'bold',
-                                    backgroundColor: (theme) => theme.palette.background.paper,
-                                },
-                            }}
+                            sx={{ borderRadius: '50px', '& .MuiSelect-select': { py: 0.5, px: 2, fontWeight: 'bold', backgroundColor: (theme) => theme.palette.background.paper, }, }}
                         >
                             <MenuItem value={'AND'}>E</MenuItem>
                             <MenuItem value={'OR'}>OU</MenuItem>

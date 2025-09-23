@@ -1,73 +1,64 @@
-import React, { useRef, useEffect } from 'react';
-import { Box, Button, Typography, Divider, FormControlLabel, Checkbox, Collapse, TextField, Alert } from '@mui/material';
+import React from 'react';
+import { Box, Button, Typography, Alert, FormControlLabel, Checkbox, Collapse, TextField, Divider } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CondicaoForm from '../CondicaoForm';
+import type { CondicaoDTO, IndicadorConfigDTO } from '../../../types/estrategia';
+
+interface FormDataProps {
+    vendaApenasPorLucro?: boolean;
+    percentualLucro?: string;
+}
 
 interface Step4Props {
-    estrategia: any;
+    formData: FormDataProps;
+    indicadores: IndicadorConfigDTO[];
+    condicoes: CondicaoDTO[];
+    onAdd: () => void;
+    onRemove: (index: number) => void;
+    onUpdate: (index: number, updated: CondicaoDTO) => void;
+    handleFieldChange: (name: string, value: any) => void;
     errors: Record<string, string | null>;
-    handleMainChange: (name: string, value: any) => void;
-    handlePercentChange: (name: 'percentualValorOperacao' | 'percentualLucro', value: string, max: number) => void;
-    addCondicaoVenda: () => void;
-    updateCondicaoVenda: (index: number, updated: any) => void;
-    removeCondicaoVenda: (index: number) => void;
 }
 
 const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
-    const {
-        estrategia, errors, handleMainChange, handlePercentChange, addCondicaoVenda,
-        updateCondicaoVenda, removeCondicaoVenda
-    } = props;
+    const { formData, indicadores, condicoes, onAdd, onRemove, onUpdate, handleFieldChange, errors } = props;
 
-    const lastConditionRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (lastConditionRef.current) {
-            lastConditionRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
-    }, [estrategia.condicoesVenda.length]);
+    const isLastCondition = (index: number) => index === condicoes.length - 1;
 
     return (
-        <>
-            <Box>
-                <Typography variant="h6" sx={{ mb: 2 }}>Parâmetros de Venda</Typography>
-                <FormControlLabel control={<Checkbox checked={!!estrategia.vendaApenasPorLucro} onChange={(e) => handleMainChange('vendaApenasPorLucro', e.target.checked)} name="vendaApenasPorLucro" size="small" />} label="Efetuar venda somente sobre % de lucro" />
-                <Collapse in={!!estrategia.vendaApenasPorLucro} timeout="auto" unmountOnExit>
-                    <Box sx={{ pl: 2, pt: 1.5, ml: 1.5, mt: 1 }}>
-                        <TextField
-                            label="% de Lucro para Venda"
-                            type="number"
-                            size="small"
-                            fullWidth
-                            value={estrategia.percentualLucro ?? ''}
-                            onChange={(e) => handlePercentChange('percentualLucro', e.target.value, 9999)}
-                            sx={{ maxWidth: '300px' }}
-                            error={!!errors.percentualLucro}
-                            helperText={errors.percentualLucro || ' '}
-                        />
-                    </Box>
-                </Collapse>
-            </Box>
-            <Divider sx={{ my: 3 }} />
+        <Box>
+            <Typography variant="h6" gutterBottom>Parâmetros de Venda</Typography>
+            <FormControlLabel control={<Checkbox checked={!!formData.vendaApenasPorLucro} onChange={(e) => handleFieldChange('vendaApenasPorLucro', e.target.checked)} name="vendaApenasPorLucro" size="small" />} label="Venda por Take Profit (Lucro)" />
+            <Collapse in={!!formData.vendaApenasPorLucro} timeout="auto" unmountOnExit>
+                <Box sx={{ pl: 2, pt: 1.5, ml: 1.5, mt: 1 }}>
+                    <TextField label="% de Lucro para Venda" type="number" size="small" fullWidth value={formData.percentualLucro ?? ''} onChange={(e) => handleFieldChange('percentualLucro', e.target.value)} sx={{ maxWidth: '300px' }} error={!!errors.percentualLucro} helperText={errors.percentualLucro || ' '} />
+                </Box>
+            </Collapse>
+
+            <Divider sx={{ my: 2 }} />
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Condições de Venda (Opcional)</Typography>
-                <Button startIcon={<AddCircleOutlineIcon />} onClick={addCondicaoVenda}>Adicionar</Button>
+                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd} disabled={indicadores.length === 0}>Adicionar Condição</Button>
             </Box>
-            {estrategia.condicoesVenda.map((condicao: any, index: number) => (
-                <div key={condicao.clientId} ref={index === estrategia.condicoesVenda.length - 1 ? lastConditionRef : null}>
+            {indicadores.length === 0 && <Alert severity="warning" sx={{ mb: 2 }}>Você deve configurar ao menos um indicador na Etapa 2 para criar regras.</Alert>}
+
+            {condicoes.map((condicao, index) => (
+                <Box key={condicao.clientId} mb={isLastCondition(index) ? 0 : 2}>
                     <CondicaoForm
-                        title="Condição de Venda"
+                        tipoCondicao="Venda"
                         index={index}
                         condicao={condicao}
-                        estrategia={estrategia}
-                        totalCondicoes={estrategia.condicoesVenda.length}
-                        onUpdate={updateCondicaoVenda}
-                        onRemove={removeCondicaoVenda}
+                        indicadores={indicadores}
+                        totalCondicoes={condicoes.length}
+                        onUpdate={(idx, updated) => onUpdate(idx, updated)}
+                        onRemove={onRemove}
                     />
-                </div>
+                </Box>
             ))}
-            {estrategia.condicoesVenda.length === 0 && <Alert severity="info">Nenhuma condição de venda por indicador adicionada.</Alert>}
-        </>
+
+            {condicoes.length === 0 && <Alert severity="info">Nenhuma condição de venda por indicador adicionada.</Alert>}
+        </Box>
     );
 };
 

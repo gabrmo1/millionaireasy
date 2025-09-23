@@ -21,21 +21,6 @@ public class EstrategiaUtils {
 
     public static void atualizarEntidadeComDto(Estrategia entidade, CriarEstrategiaDTO dto) {
         entidade.setNome(dto.nome());
-        entidade.setUtilizarRsiCurto(dto.utilizarRsiCurto());
-        entidade.setPeriodoRsiCurto(dto.periodoRsiCurto());
-        entidade.setUtilizarRsiMedio(dto.utilizarRsiMedio());
-        entidade.setPeriodoRsiMedio(dto.periodoRsiMedio());
-        entidade.setUtilizarRsiLongo(dto.utilizarRsiLongo());
-        entidade.setPeriodoRsiLongo(dto.periodoRsiLongo());
-        entidade.setUtilizarRsiEstocastico(dto.utilizarRsiEstocastico());
-        entidade.setPeriodoRsiEstocastico(dto.periodoRsiEstocastico());
-        entidade.setSuavizacaoRsiEstocasticoD(dto.suavizacaoRsiEstocasticoD());
-        entidade.setSuavizacaoRsiEstocasticoK(dto.suavizacaoRsiEstocasticoK());
-        entidade.setUtilizarEma(dto.utilizarEma());
-        entidade.setPeriodoEma(dto.periodoEma());
-        entidade.setUtilizarSma(dto.utilizarSma());
-        entidade.setPeriodoSma(dto.periodoSma());
-        entidade.setRealizarLeituraVolume(dto.realizarLeituraVolume());
         entidade.setValorOperacaoFixo(dto.valorOperacaoFixo());
         entidade.setStablecoin(dto.stablecoin());
         entidade.setPercentualValorOperacao(dto.percentualValorOperacao());
@@ -51,26 +36,16 @@ public class EstrategiaUtils {
         return EstrategiaDTO.builder()
                 .id(entidade.getId())
                 .nome(entidade.getNome())
-                .utilizarRsiCurto(entidade.getUtilizarRsiCurto())
-                .periodoRsiCurto(entidade.getPeriodoRsiCurto())
-                .utilizarRsiMedio(entidade.getUtilizarRsiMedio())
-                .periodoRsiMedio(entidade.getPeriodoRsiMedio())
-                .utilizarRsiLongo(entidade.getUtilizarRsiLongo())
-                .periodoRsiLongo(entidade.getPeriodoRsiLongo())
-                .utilizarRsiEstocastico(entidade.getUtilizarRsiEstocastico())
-                .periodoRsiEstocastico(entidade.getPeriodoRsiEstocastico())
-                .suavizacaoRsiEstocasticoD(entidade.getSuavizacaoRsiEstocasticoD())
-                .suavizacaoRsiEstocasticoK(entidade.getSuavizacaoRsiEstocasticoK())
-                .utilizarEma(entidade.getUtilizarEma())
-                .periodoEma(entidade.getPeriodoEma())
-                .utilizarSma(entidade.getUtilizarSma())
-                .periodoSma(entidade.getPeriodoSma())
-                .realizarLeituraVolume(entidade.getRealizarLeituraVolume())
                 .valorOperacaoFixo(entidade.getValorOperacaoFixo())
                 .stablecoin(entidade.getStablecoin())
                 .percentualValorOperacao(entidade.getPercentualValorOperacao())
                 .vendaApenasPorLucro(entidade.getVendaApenasPorLucro())
                 .percentualLucro(entidade.getPercentualLucro())
+                .indicadoresConfig(
+                        !CollectionUtils.isEmpty(entidade.getIndicadoresConfig()) ?
+                                entidade.getIndicadoresConfig().stream().map(IndicadorConfigUtils::converterEntidadeParaDto).collect(Collectors.toList()) :
+                                Collections.emptyList()
+                )
                 .condicoesCompra(
                         !CollectionUtils.isEmpty(entidade.getCondicoesCompra()) ?
                                 entidade.getCondicoesCompra().stream().map(CondicaoCompraUtils::converterEntidadeParaDto).collect(Collectors.toList()) :

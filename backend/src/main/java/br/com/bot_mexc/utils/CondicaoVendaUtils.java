@@ -11,11 +11,15 @@ public class CondicaoVendaUtils {
     public static CondicaoVenda converterDtoParaEntidade(CondicaoVendaDTO dto, Estrategia estrategia) {
         return CondicaoVenda.builder()
                 .estrategia(estrategia)
-                .tipoIndicador(dto.tipoIndicador())
-                .valorIndicador(dto.valorIndicador())
-                .posicaoFaixa(dto.posicaoFaixa())
                 .ordem(dto.ordem())
                 .operadorParaProxima(dto.operadorParaProxima())
+                .operandoATipo(dto.operandoATipo())
+                .operandoAReferencia(dto.operandoAReferencia())
+                .operandoAValor(dto.operandoAValor())
+                .operador(dto.operador())
+                .operandoBTipo(dto.operandoBTipo())
+                .operandoBReferencia(dto.operandoBReferencia())
+                .operandoBValor(dto.operandoBValor())
                 .build();
     }
 
@@ -23,11 +27,15 @@ public class CondicaoVendaUtils {
         return CondicaoVendaDTO.builder()
                 .id(entidade.getId())
                 .idEstrategia(entidade.getEstrategia().getId())
-                .tipoIndicador(entidade.getTipoIndicador())
-                .valorIndicador(entidade.getValorIndicador())
-                .posicaoFaixa(entidade.getPosicaoFaixa())
                 .ordem(entidade.getOrdem())
                 .operadorParaProxima(entidade.getOperadorParaProxima())
+                .operandoATipo(entidade.getOperandoATipo())
+                .operandoAReferencia(entidade.getOperandoAReferencia())
+                .operandoAValor(entidade.getOperandoAValor())
+                .operador(entidade.getOperador())
+                .operandoBTipo(entidade.getOperandoBTipo())
+                .operandoBReferencia(entidade.getOperandoBReferencia())
+                .operandoBValor(entidade.getOperandoBValor())
                 .build();
     }
 }

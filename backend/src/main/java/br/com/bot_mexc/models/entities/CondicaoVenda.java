@@ -1,8 +1,8 @@
 package br.com.bot_mexc.models.entities;
 
+import br.com.bot_mexc.models.enums.OperadorComparacao;
 import br.com.bot_mexc.models.enums.OperadorLogico;
-import br.com.bot_mexc.models.enums.PosicaoFaixasCompraVenda;
-import br.com.bot_mexc.models.enums.TipoIndicador;
+import br.com.bot_mexc.models.enums.TipoOperando;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,22 +22,38 @@ public class CondicaoVenda extends BaseEntity {
     @JoinColumn(name = "id_estrategia", nullable = false)
     private Estrategia estrategia;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_indicador", nullable = false)
-    private TipoIndicador tipoIndicador;
-
-    @Column(name = "valor_indicador")
-    private BigDecimal valorIndicador;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "posicao_faixa")
-    private PosicaoFaixasCompraVenda posicaoFaixa;
-
     @Column(name = "ordem", nullable = false)
     private Integer ordem;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "operador_para_proxima")
     private OperadorLogico operadorParaProxima;
+
+    // --- Operando A ---
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operando_a_tipo", nullable = false)
+    private TipoOperando operandoATipo;
+
+    @Column(name = "operando_a_referencia")
+    private String operandoAReferencia;
+
+    @Column(name = "operando_a_valor")
+    private BigDecimal operandoAValor;
+
+    // --- Operador de Comparação ---
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operador", nullable = false)
+    private OperadorComparacao operador;
+
+    // --- Operando B ---
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operando_b_tipo", nullable = false)
+    private TipoOperando operandoBTipo;
+
+    @Column(name = "operando_b_referencia")
+    private String operandoBReferencia;
+
+    @Column(name = "operando_b_valor")
+    private BigDecimal operandoBValor;
 
 }

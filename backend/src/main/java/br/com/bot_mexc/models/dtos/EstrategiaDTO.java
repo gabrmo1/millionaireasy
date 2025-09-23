@@ -9,27 +9,12 @@ import java.util.List;
 public record EstrategiaDTO(
         String id,
         String nome,
-        Boolean utilizarRsiCurto,
-        Integer periodoRsiCurto,
-        Boolean utilizarRsiMedio,
-        Integer periodoRsiMedio,
-        Boolean utilizarRsiLongo,
-        Integer periodoRsiLongo,
-        Boolean utilizarRsiEstocastico,
-        Integer periodoRsiEstocastico,
-        Integer suavizacaoRsiEstocasticoD,
-        Integer suavizacaoRsiEstocasticoK,
-        Boolean utilizarEma,
-        Integer periodoEma,
-        Boolean utilizarSma,
-        Integer periodoSma,
-        Boolean realizarLeituraVolume,
         BigDecimal valorOperacaoFixo,
         String stablecoin,
         BigDecimal percentualValorOperacao,
         Boolean vendaApenasPorLucro,
         BigDecimal percentualLucro,
+        List<IndicadorConfigDTO> indicadoresConfig,
         List<CondicaoCompraDTO> condicoesCompra,
         List<CondicaoVendaDTO> condicoesVenda
-) {
-}
+) {}
