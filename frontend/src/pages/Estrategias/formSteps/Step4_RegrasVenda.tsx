@@ -53,6 +53,7 @@ const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
                         totalCondicoes={condicoes.length}
                         onUpdate={(idx, updated) => onUpdate(idx, updated)}
                         onRemove={onRemove}
+                        errors={errors}
                     />
                 </Box>
             ))}
