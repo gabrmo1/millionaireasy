@@ -6,6 +6,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import type { IndicadorConfigDTO } from '../../../types/estrategia';
 import { getTipoIndicadorOptions } from '../../../utils/enumMappings';
 import { indicadorParamsConfig } from '../indicadorParamsConfig';
+import { formatLeadingZeros } from "../../../utils/inputFormatters";
 
 interface Step2Props {
     indicadores: IndicadorConfigDTO[];
@@ -18,8 +19,10 @@ interface Step2Props {
 const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove, onUpdate, errors }) => {
 
     const handleParamChange = (index: number, paramKey: string, value: string) => {
+        let processedValue = value.replace(/[^0-9]/g, '');
+        processedValue = formatLeadingZeros(processedValue);
         const updated = { ...indicadores[index] };
-        updated.parametros = { ...updated.parametros, [paramKey]: Number(value) || 0 };
+        updated.parametros = { ...updated.parametros, [paramKey]: Number(processedValue) || 0 };
         onUpdate(index, updated);
     };
 
@@ -27,12 +30,13 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
         const tipo = value as IndicadorConfigDTO['tipoIndicador'];
         const paramsConf = indicadorParamsConfig[tipo];
         const newParams: { [key: string]: number } = {};
+
         if (paramsConf) {
             paramsConf.forEach(p => {
                 newParams[p.key] = p.defaultValue;
             });
         }
-        // Mantém o alias antigo para ser regenerado no componente pai
+
         const updated = { ...indicadores[index], tipoIndicador: tipo, parametros: newParams };
         onUpdate(index, updated);
     }
@@ -57,7 +61,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                                 fullWidth
                                 size="small"
                                 value={indicador.alias}
-                                disabled // <-- ALTERAÇÃO: Campo volta a ser somente leitura
+                                disabled
                                 error={!!errors[`indicador_${index}_alias`]}
                                 helperText={errors[`indicador_${index}_alias`] || 'Gerado automaticamente'}
                             />
@@ -83,7 +87,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                                     size="small"
                                     value={indicador.parametros[param.key] || ''}
                                     onChange={(e) => handleParamChange(index, param.key, e.target.value)}
-                                    inputProps={{ min: param.min, max: param.max }}
+                                    inputProps={{ min: param.min || 1, max: param.max }}
                                 />
                             </Grid>
                         ))}

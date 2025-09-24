@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { OperadorLogico } from '../../types/enums';
+import { OperadorLogico, TipoOperando, OperadorComparacao } from '../../types/enums';
 import type { CondicaoDTO, IndicadorConfigDTO } from '../../types/estrategia';
-import { getTipoOperandoOptions, getOperadorComparacaoOptions } from '../../utils/enumMappings';
+import { getTipoOperandoOptions, getOperadorComparacaoOptions, indicatorProperties, type IndicatorUnit } from '../../utils/enumMappings';
 
 interface CondicaoFormProps {
     condicao: CondicaoDTO;
@@ -18,8 +18,34 @@ interface CondicaoFormProps {
 }
 
 const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondicoes, indicadores, onUpdate, onRemove, tipoCondicao, errors }) => {
+
+    const getOperandUnit = (tipo: TipoOperando, referencia?: string): IndicatorUnit | 'FIXED' | 'PRICE' | null => {
+        if (tipo === TipoOperando.VALOR_FIXO) return 'FIXED';
+        if (tipo === TipoOperando.PRECO_FECHAMENTO) return 'PRICE';
+        if (tipo === TipoOperando.INDICADOR && referencia) {
+            const indicator = indicadores.find(i => i.alias === referencia);
+            return indicator ? indicatorProperties[indicator.tipoIndicador]?.unit : null;
+        }
+        return null;
+    };
+
     const handleChange = (field: keyof CondicaoDTO, value: any) => {
-        onUpdate(index, { ...condicao, [field]: value });
+        const updatedCondicao = { ...condicao, [field]: value };
+
+        const unitA = getOperandUnit(updatedCondicao.operandoATipo, updatedCondicao.operandoAReferencia);
+        const unitB = getOperandUnit(updatedCondicao.operandoBTipo, updatedCondicao.operandoBReferencia);
+
+        const isCrossover = updatedCondicao.operador === OperadorComparacao.CRUZOU_PARA_CIMA || updatedCondicao.operador === OperadorComparacao.CRUZOU_PARA_BAIXO;
+
+        if ( (unitA && unitB && unitA !== 'FIXED' && unitB !== 'FIXED' && unitA !== unitB) ||
+            (isCrossover && unitA === 'FIXED' && unitB === 'FIXED') )
+        {
+            updatedCondicao.operandoBTipo = TipoOperando.VALOR_FIXO;
+            delete updatedCondicao.operandoBReferencia;
+            delete updatedCondicao.operandoBValor;
+        }
+
+        onUpdate(index, updatedCondicao);
     };
 
     const renderOperandoInput = (lado: 'A' | 'B') => {
@@ -28,9 +54,25 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
         const valorKey = lado === 'A' ? 'operandoAValor' : 'operandoBValor';
         const errorKey = `condicao_${tipoCondicao.toLowerCase()}_${index}_valor_${lado.toLowerCase()}`;
 
+        const otherSideType = lado === 'A' ? condicao.operandoBTipo : condicao.operandoATipo;
+        const otherSideRef = lado === 'A' ? condicao.operandoBReferencia : condicao.operandoAReferencia;
+        let preventNegative = false;
+        const otherSideUnit = getOperandUnit(otherSideType, otherSideRef);
+        if (otherSideUnit === 'PRICE' || otherSideUnit === 'VOLUME' || otherSideUnit === 'OSCILLATOR_0_100') {
+            preventNegative = true;
+        }
+
+
+        const unitA = getOperandUnit(condicao.operandoATipo, condicao.operandoAReferencia);
+        const filteredIndicators = indicadores.filter(ind => {
+            if (!unitA || unitA === 'FIXED') return true;
+            const unitInd = indicatorProperties[ind.tipoIndicador]?.unit;
+            return unitInd === unitA;
+        });
+
         const inputComponent = () => {
             switch (condicao[tipoKey]) {
-                case 'INDICADOR':
+                case TipoOperando.INDICADOR:
                     return (
                         <FormControl fullWidth size="small">
                             <InputLabel>Indicador</InputLabel>
@@ -39,11 +81,11 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                                 label="Indicador"
                                 onChange={(e) => handleChange(refKey, e.target.value)}
                             >
-                                {indicadores.map(i => <MenuItem key={i.alias} value={i.alias}>{i.alias}</MenuItem>)}
+                                {filteredIndicators.map(i => <MenuItem key={i.alias} value={i.alias}>{i.alias}</MenuItem>)}
                             </Select>
                         </FormControl>
                     );
-                case 'VALOR_FIXO':
+                case TipoOperando.VALOR_FIXO:
                     return (
                         <TextField
                             label="Valor"
@@ -54,18 +96,34 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                             onChange={(e) => handleChange(valorKey, e.target.value === '' ? undefined : parseFloat(e.target.value))}
                             error={!!errors[errorKey]}
                             helperText={errors[errorKey] || ' '}
+                            inputProps={preventNegative ? { min: 0 } : undefined}
                         />
                     );
-                case 'PRECO_FECHAMENTO':
+                case TipoOperando.PRECO_FECHAMENTO:
                 default:
                     return null;
             }
         };
 
-        return condicao[tipoKey] !== 'PRECO_FECHAMENTO' ? <Box mt={1.5}>{inputComponent()}</Box> : null;
+        return condicao[tipoKey] !== TipoOperando.PRECO_FECHAMENTO ? <Box mt={1.5}>{inputComponent()}</Box> : null;
     };
 
     const isLastCondition = index === totalCondicoes - 1;
+
+    const filteredOptions = useMemo(() => {
+        const unitA = getOperandUnit(condicao.operandoATipo, condicao.operandoAReferencia);
+        const isCrossover = condicao.operador === OperadorComparacao.CRUZOU_PARA_CIMA || condicao.operador === OperadorComparacao.CRUZOU_PARA_BAIXO;
+
+        return getTipoOperandoOptions().filter(opt => {
+            if (isCrossover && condicao.operandoATipo === TipoOperando.VALOR_FIXO && opt.value === TipoOperando.VALOR_FIXO) {
+                return false;
+            }
+            if (!unitA || unitA === 'FIXED') return true;
+            if (opt.value === TipoOperando.VALOR_FIXO) return true;
+            if (opt.value === TipoOperando.PRECO_FECHAMENTO) return unitA === 'PRICE';
+            return opt.value === TipoOperando.INDICADOR;
+        });
+    }, [condicao.operandoATipo, condicao.operandoAReferencia, condicao.operador]);
 
     return (
         <>
@@ -77,10 +135,10 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                 <Grid container spacing={2} alignItems="flex-start">
                     <Grid item xs={12} sm={5}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>Operando A</InputLabel>
+                            <InputLabel>Quando</InputLabel>
                             <Select
                                 value={condicao.operandoATipo || ''}
-                                label="Operando A"
+                                label="Quando"
                                 onChange={(e) => handleChange('operandoATipo', e.target.value)}
                             >
                                 {getTipoOperandoOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
@@ -90,10 +148,10 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                     </Grid>
                     <Grid item xs={12} sm={2} sx={{ pt: { xs: 2, sm: '16px !important' } }}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>Operador</InputLabel>
+                            <InputLabel>Condição</InputLabel>
                             <Select
                                 value={condicao.operador || ''}
-                                label="Operador"
+                                label="Condição"
                                 onChange={(e) => handleChange('operador', e.target.value)}
                             >
                                 {getOperadorComparacaoOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
@@ -102,13 +160,13 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                     </Grid>
                     <Grid item xs={12} sm={5}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>Operando B</InputLabel>
+                            <InputLabel>Comparado</InputLabel>
                             <Select
                                 value={condicao.operandoBTipo || ''}
-                                label="Operando B"
+                                label="Comparado"
                                 onChange={(e) => handleChange('operandoBTipo', e.target.value)}
                             >
-                                {getTipoOperandoOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                {filteredOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
                             </Select>
                         </FormControl>
                         {renderOperandoInput('B')}

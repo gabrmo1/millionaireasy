@@ -1,8 +1,7 @@
-// frontend/src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, GlobalStyles } from '@mui/material';
 
 import ProtectedRoute from './components/router/ProtectedRoute';
 import LoginPage from './pages/Auth/LoginPage';
@@ -11,6 +10,24 @@ import Welcome from './components/pages/Welcome';
 import OperadoresPage from './pages/Operadores/OperadoresPage';
 import OperacoesPage from './pages/Operacoes/OperacoesPage';
 import EstrategiasPage from './pages/Estrategias/EstrategiasPage';
+
+const scrollbarStyles = (theme: any) => ({
+    '*::-webkit-scrollbar': {
+        width: '10px',
+        height: '10px',
+    },
+    '*::-webkit-scrollbar-track': {
+        backgroundColor: theme.palette.background.paper,
+    },
+    '*::-webkit-scrollbar-thumb': {
+        backgroundColor: theme.palette.primary.main,
+        borderRadius: '10px',
+        border: `3px solid ${theme.palette.background.paper}`,
+    },
+    '*::-webkit-scrollbar-thumb:hover': {
+        backgroundColor: theme.palette.primary.dark,
+    },
+});
 
 const AuthRouteWrapper = ({ children }: { children: React.ReactNode }) => {
     const { isAuthenticated } = useAuth();
@@ -49,6 +66,7 @@ const AppContent = () => {
 function App() {
     return (
         <ThemeProvider>
+            <GlobalStyles styles={scrollbarStyles} />
             <AuthProvider>
                 <Router>
                     <AppContent />

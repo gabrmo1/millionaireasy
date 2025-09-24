@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Typography, Alert, TextField, Divider } from '@mui/material';
+import { Box, Button, Typography, Alert, TextField, Divider, InputAdornment } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CondicaoForm from '../CondicaoForm';
@@ -27,16 +27,13 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
 
     const isLastCondition = (index: number) => index === condicoes.length - 1;
 
-    // --- LÓGICA DO LABEL DINÂMICO ---
-    const valorFixoLabel = `Valor Fixo por Operação (${formData.stablecoin || '...'})`;
-
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>Parâmetros de Compra</Typography>
+            <Typography variant="h6" gutterBottom>Investimento</Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={6}>
                     <TextField
-                        label={valorFixoLabel} // <-- LABEL ATUALIZADO
+                        label="Valor Fixo por Operação"
                         type="number"
                         size="small"
                         fullWidth
@@ -46,6 +43,13 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                         inputProps={{ min: 0 }}
                         error={!!errors.valorOperacaoFixo}
                         helperText={errors.valorOperacaoFixo || ' '}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    {formData.stablecoin}
+                                </InputAdornment>
+                            ),
+                        }}
                     />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -59,6 +63,18 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                         disabled={!!formData.valorOperacaoFixo}
                         error={!!errors.percentualValorOperacao}
                         helperText={errors.percentualValorOperacao || `Baseado na Stablecoin (${formData.stablecoin})`}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    {formData.stablecoin}
+                                </InputAdornment>
+                            ),
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    %
+                                </InputAdornment>
+                            )
+                        }}
                     />
                 </Grid>
             </Grid>
@@ -66,8 +82,8 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
             <Divider sx={{ my: 2 }} />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">Condições de Compra</Typography>
-                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd} disabled={indicadores.length === 0}>Adicionar Condição</Button>
+                <Typography variant="h6">Configurações de compra</Typography>
+                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd} disabled={indicadores.length === 0}>Adicionar</Button>
             </Box>
             {indicadores.length === 0 && <Alert severity="warning" sx={{ mb: 2 }}>Você deve configurar ao menos um indicador na etapa anterior para criar regras.</Alert>}
 

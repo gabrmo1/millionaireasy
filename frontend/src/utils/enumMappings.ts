@@ -1,6 +1,21 @@
 import { PosicaoFaixasCompraVenda, TipoIndicador, OperadorComparacao, TipoOperando } from '../types/enums';
 import { StatusOperacoes } from '../types/operacao';
 
+// Define as "escalas" ou "unidades" de cada indicador
+export type IndicatorUnit = 'PRICE' | 'OSCILLATOR_0_100' | 'VOLUME';
+
+// Definição das propriedades de cada indicador (MIN/MAX/UNIT)
+export const indicatorProperties: Record<TipoIndicador, { min: number, max: number | null, unit: IndicatorUnit }> = {
+    [TipoIndicador.RSI_CURTO]: { min: 0, max: 100, unit: 'OSCILLATOR_0_100' },
+    [TipoIndicador.RSI_MEDIO]: { min: 0, max: 100, unit: 'OSCILLATOR_0_100' },
+    [TipoIndicador.RSI_LONGO]: { min: 0, max: 100, unit: 'OSCILLATOR_0_100' },
+    [TipoIndicador.RSI_ESTOCASTICO_K]: { min: 0, max: 100, unit: 'OSCILLATOR_0_100' },
+    [TipoIndicador.RSI_ESTOCASTICO_D]: { min: 0, max: 100, unit: 'OSCILLATOR_0_100' },
+    [TipoIndicador.EMA]: { min: 0, max: null, unit: 'PRICE' },
+    [TipoIndicador.SMA]: { min: 0, max: null, unit: 'PRICE' },
+    [TipoIndicador.VOLUME]: { min: 0, max: null, unit: 'VOLUME' },
+};
+
 // Mapeamento para PosicaoFaixasCompraVenda (SERÁ REMOVIDO POSTERIORMENTE)
 export const posicaoFaixasLabels: Record<PosicaoFaixasCompraVenda, string> = {
     [PosicaoFaixasCompraVenda.ABAIXO]: 'Abaixo de',

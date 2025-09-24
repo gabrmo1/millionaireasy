@@ -39,7 +39,7 @@ const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Condições de Venda (Opcional)</Typography>
-                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd} disabled={indicadores.length === 0}>Adicionar Condição</Button>
+                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd} disabled={indicadores.length === 0}>Adicionar</Button>
             </Box>
             {indicadores.length === 0 && <Alert severity="warning" sx={{ mb: 2 }}>Você deve configurar ao menos um indicador na Etapa 2 para criar regras.</Alert>}
 
