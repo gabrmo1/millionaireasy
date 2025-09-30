@@ -15,6 +15,7 @@ import type { CriarEstrategiaDTO, IndicadorConfigDTO, CondicaoDTO } from '../../
 import { TipoOperando, OperadorComparacao } from '../../types/enums';
 import { formatLeadingZeros } from "../../utils/inputFormatters.ts";
 import { generateIndicatorAlias } from './estrategiaUtils';
+import { indicadorParamsConfig } from "./indicadorParamsConfig.ts";
 
 interface EstrategiaFormProps {
     entityId: string | null;
@@ -146,9 +147,26 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
                 if (!currentFormData.stablecoin) { newErrors.stablecoin = 'A stablecoin é obrigatória.'; isValid = false; }
                 break;
             case 1:
-                { const indicatorSignatures = new Set<string>();
+            { const indicatorSignatures = new Set<string>();
+                if (currentFormData.indicadoresConfig.length === 0) {
+                    newErrors.indicadores = 'Adicione ao menos um indicador.';
+                    isValid = false;
+                }
                 currentFormData.indicadoresConfig.forEach((indicador, index) => {
-                    // Ordena as chaves dos parâmetros para criar uma assinatura consistente
+                    const paramsConf = indicadorParamsConfig[indicador.tipoIndicador];
+                    if (paramsConf) {
+                        paramsConf.forEach(p => {
+                            const value = indicador.parametros[p.key];
+                            if (value == null || value === 0) {
+                                newErrors[`indicador_${index}_param_${p.key}`] = 'Obrigatório.';
+                                isValid = false;
+                            } else if ((p.min && value < p.min) || (p.max && value > p.max)) {
+                                newErrors[`indicador_${index}_param_${p.key}`] = `Valor entre ${p.min} e ${p.max}.`;
+                                isValid = false;
+                            }
+                        });
+                    }
+
                     const sortedParams = Object.keys(indicador.parametros).sort().reduce((obj, key) => {
                         obj[key] = indicador.parametros[key];
                         return obj;
@@ -156,18 +174,27 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
 
                     const signature = `${indicador.tipoIndicador}-${JSON.stringify(sortedParams)}`;
                     if (indicatorSignatures.has(signature)) {
-                        newErrors[`indicador_${index}_alias`] = 'Este indicador já foi adicionado com os mesmos parâmetros.';
+                        newErrors[`indicador_${index}_alias`] = 'Indicador duplicado com os mesmos parâmetros.';
                         isValid = false;
                     }
                     indicatorSignatures.add(signature);
                 });
                 break; }
             case 2:
-                { const hasValor = (currentFormData.valorOperacaoFixo && Number(currentFormData.valorOperacaoFixo) > 0) || (currentFormData.percentualValorOperacao && Number(currentFormData.percentualValorOperacao) > 0);
-                if (currentFormData.condicoesCompra.length > 0 && !hasValor) {
-                    newErrors.valorOperacaoFixo = 'Defina um valor de operação (fixo ou percentual) para acionar as condições.';
+            {
+                const valorFixo = currentFormData.valorOperacaoFixo ? Number(currentFormData.valorOperacaoFixo) : 0;
+                const percValor = currentFormData.percentualValorOperacao ? Number(currentFormData.percentualValorOperacao) : 0;
+
+                if (valorFixo <= 0 && percValor <= 0) {
+                    newErrors.valorOperacaoFixo = 'Defina um valor (fixo ou percentual) maior que zero.';
                     isValid = false;
                 }
+
+                if (percValor > 100) {
+                    newErrors.percentualValorOperacao = 'O percentual não pode ser maior que 100.';
+                    isValid = false;
+                }
+
                 currentFormData.condicoesCompra.forEach((cond, index) => {
                     if (cond.operandoATipo === 'VALOR_FIXO' && cond.operandoAValor == null) {
                         newErrors[`condicao_compra_${index}_valor_a`] = 'Valor é obrigatório.';
@@ -178,7 +205,8 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
                         isValid = false;
                     }
                 });
-                break; }
+                break;
+            }
             case 3:
                 if (currentFormData.vendaApenasPorLucro && (!currentFormData.percentualLucro || Number(currentFormData.percentualLucro) <= 0)) {
                     newErrors.percentualLucro = 'O percentual de lucro deve ser maior que zero.';

@@ -1,5 +1,16 @@
 import React from 'react';
-import { Box, Button, Typography, IconButton, Paper, TextField, MenuItem, FormControl, InputLabel, Select } from '@mui/material';
+import {
+    Box,
+    Button,
+    Typography,
+    IconButton,
+    Paper,
+    TextField,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Select, FormHelperText, Alert
+} from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -16,7 +27,7 @@ interface Step2Props {
     errors: Record<string, string | null>;
 }
 
-const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove, onUpdate }) => {
+const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove, onUpdate, errors }) => {
 
     const handleParamChange = (index: number, paramKey: string, value: string) => {
         let processedValue = value.replace(/[^0-9]/g, '');
@@ -48,6 +59,8 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                 <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd}>Adicionar Indicador</Button>
             </Box>
 
+            {errors.indicadores && <Alert severity="error" sx={{ mb: 2 }}>{errors.indicadores}</Alert>}
+
             {indicadores.map((indicador, index) => (
                 <Paper key={indicador.clientId} elevation={2} sx={{ p: 2, mb: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -56,7 +69,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                     </Box>
                     <Grid container spacing={2}>
                         <Grid item xs={12}>
-                            <FormControl fullWidth size="small">
+                            <FormControl fullWidth size="small" error={!!errors[`indicador_${index}_alias`]}>
                                 <InputLabel>Tipo de Indicador</InputLabel>
                                 <Select
                                     label="Tipo de Indicador"
@@ -65,6 +78,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                                 >
                                     {getTipoIndicadorOptions().map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
                                 </Select>
+                                {errors[`indicador_${index}_alias`] && <FormHelperText>{errors[`indicador_${index}_alias`]}</FormHelperText>}
                             </FormControl>
                         </Grid>
                         {indicadorParamsConfig[indicador.tipoIndicador]?.map(param => (
@@ -77,6 +91,8 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                                     value={indicador.parametros[param.key] || ''}
                                     onChange={(e) => handleParamChange(index, param.key, e.target.value)}
                                     inputProps={{ min: param.min || 1, max: param.max }}
+                                    error={!!errors[`indicador_${index}_param_${param.key}`]}
+                                    helperText={errors[`indicador_${index}_param_${param.key}`] || ' '}
                                 />
                             </Grid>
                         ))}

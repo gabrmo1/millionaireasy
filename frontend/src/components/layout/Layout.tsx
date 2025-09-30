@@ -1,4 +1,3 @@
-// frontend/src/components/layout/Layout.tsx
 import React from 'react';
 import { alpha } from '@mui/material/styles'
 import { Box, Toolbar, Drawer, List, ListItemButton, ListItemText, Divider, ListItemIcon } from '@mui/material';

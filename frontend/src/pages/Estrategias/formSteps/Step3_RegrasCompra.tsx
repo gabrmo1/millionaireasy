@@ -63,6 +63,7 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                         disabled={!!formData.valorOperacaoFixo}
                         error={!!errors.percentualValorOperacao}
                         helperText={errors.percentualValorOperacao || `Baseado na Stablecoin (${formData.stablecoin})`}
+                        inputProps={{ min: 0, max: 100 }}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
