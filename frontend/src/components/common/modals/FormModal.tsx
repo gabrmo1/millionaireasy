@@ -11,7 +11,7 @@ interface FormModalProps {
 
 const FormModal: React.FC<FormModalProps> = ({ open, onClose, title, children }) => {
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{
+        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{
             sx: {
                 height: '90vh',
                 maxHeight: '900px',

@@ -16,7 +16,7 @@ interface Step2Props {
     errors: Record<string, string | null>;
 }
 
-const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove, onUpdate, errors }) => {
+const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove, onUpdate }) => {
 
     const handleParamChange = (index: number, paramKey: string, value: string) => {
         let processedValue = value.replace(/[^0-9]/g, '');
@@ -55,18 +55,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                         <IconButton onClick={() => onRemove(index)} color="error"><DeleteIcon /></IconButton>
                     </Box>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={4}>
-                            <TextField
-                                label="Nome (Alias)"
-                                fullWidth
-                                size="small"
-                                value={indicador.alias}
-                                disabled
-                                error={!!errors[`indicador_${index}_alias`]}
-                                helperText={errors[`indicador_${index}_alias`] || 'Gerado automaticamente'}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={8}>
+                        <Grid item xs={12}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Tipo de Indicador</InputLabel>
                                 <Select

@@ -44,8 +44,8 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                         error={!!errors.valorOperacaoFixo}
                         helperText={errors.valorOperacaoFixo || ' '}
                         InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
+                            endAdornment: (
+                                <InputAdornment position="end">
                                     {formData.stablecoin}
                                 </InputAdornment>
                             ),
@@ -64,14 +64,9 @@ const Step3_RegrasCompra: React.FC<Step3Props> = (props) => {
                         error={!!errors.percentualValorOperacao}
                         helperText={errors.percentualValorOperacao || `Baseado na Stablecoin (${formData.stablecoin})`}
                         InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    {formData.stablecoin}
-                                </InputAdornment>
-                            ),
                             endAdornment: (
                                 <InputAdornment position="end">
-                                    %
+                                    % {formData.stablecoin}
                                 </InputAdornment>
                             )
                         }}

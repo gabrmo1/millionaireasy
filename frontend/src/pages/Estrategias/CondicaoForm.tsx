@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField } from '@mui/material';
+import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField, InputAdornment } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { OperadorLogico, TipoOperando, OperadorComparacao } from '../../types/enums';
+import { OperadorLogico, TipoOperando, OperadorComparacao, TipoIndicador } from '../../types/enums';
 import type { CondicaoDTO, IndicadorConfigDTO } from '../../types/estrategia';
 import { getTipoOperandoOptions, getOperadorComparacaoOptions, indicatorProperties, type IndicatorUnit } from '../../utils/enumMappings';
+import { formatLeadingZeros } from "../../utils/inputFormatters";
 
 interface CondicaoFormProps {
     condicao: CondicaoDTO;
@@ -29,6 +30,18 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
         return null;
     };
 
+    const isRsiIndicator = (referencia?: string): boolean => {
+        if (!referencia) return false;
+        const indicator = indicadores.find(i => i.alias === referencia);
+        return !!indicator && (
+            indicator.tipoIndicador === TipoIndicador.RSI_CURTO ||
+            indicator.tipoIndicador === TipoIndicador.RSI_MEDIO ||
+            indicator.tipoIndicador === TipoIndicador.RSI_LONGO ||
+            indicator.tipoIndicador === TipoIndicador.RSI_ESTOCASTICO_D ||
+            indicator.tipoIndicador === TipoIndicador.RSI_ESTOCASTICO_K
+        );
+    };
+
     const handleChange = (field: keyof CondicaoDTO, value: any) => {
         const updatedCondicao = { ...condicao, [field]: value };
 
@@ -48,27 +61,58 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
         onUpdate(index, updatedCondicao);
     };
 
+    const handleValorFixoChange = (lado: 'A' | 'B', value: string) => {
+        const valorKey = lado === 'A' ? 'operandoAValor' : 'operandoBValor';
+        const tipoKey = lado === 'A' ? 'operandoATipo' : 'operandoBTipo';
+
+        const otherSideTipoKey = lado === 'A' ? 'operandoBTipo' : 'operandoATipo';
+        const otherSideRefKey = lado === 'A' ? 'operandoBReferencia' : 'operandoAReferencia';
+
+        const formattedStringValue = formatLeadingZeros(value.replace(/[^0-9.]/g, ''));
+        let finalValue: number | undefined = undefined;
+
+        if (formattedStringValue !== '') {
+            let numValue = parseFloat(formattedStringValue);
+
+            if (condicao[tipoKey] === TipoOperando.VALOR_FIXO &&
+                condicao[otherSideTipoKey] === TipoOperando.INDICADOR &&
+                isRsiIndicator(condicao[otherSideRefKey])) {
+
+                if (numValue > 100) numValue = 100;
+                if (numValue < 0) numValue = 0;
+            }
+            finalValue = numValue;
+        }
+
+        handleChange(valorKey, finalValue);
+    };
+
     const renderOperandoInput = (lado: 'A' | 'B') => {
         const tipoKey = lado === 'A' ? 'operandoATipo' : 'operandoBTipo';
         const refKey = lado === 'A' ? 'operandoAReferencia' : 'operandoBReferencia';
         const valorKey = lado === 'A' ? 'operandoAValor' : 'operandoBValor';
         const errorKey = `condicao_${tipoCondicao.toLowerCase()}_${index}_valor_${lado.toLowerCase()}`;
 
-        const otherSideType = lado === 'A' ? condicao.operandoBTipo : condicao.operandoATipo;
+        const otherSideTipo = lado === 'A' ? condicao.operandoBTipo : condicao.operandoATipo;
         const otherSideRef = lado === 'A' ? condicao.operandoBReferencia : condicao.operandoAReferencia;
-        let preventNegative = false;
-        const otherSideUnit = getOperandUnit(otherSideType, otherSideRef);
-        if (otherSideUnit === 'PRICE' || otherSideUnit === 'VOLUME' || otherSideUnit === 'OSCILLATOR_0_100') {
-            preventNegative = true;
-        }
+        const otherSideUnit = getOperandUnit(otherSideTipo, otherSideRef);
+        const preventNegative = otherSideUnit === 'PRICE' || otherSideUnit === 'VOLUME' || otherSideUnit === 'OSCILLATOR_0_100';
 
+        const isComparedToRsi = (otherSideTipo === TipoOperando.INDICADOR && isRsiIndicator(otherSideRef));
 
-        const unitA = getOperandUnit(condicao.operandoATipo, condicao.operandoAReferencia);
-        const filteredIndicators = indicadores.filter(ind => {
-            if (!unitA || unitA === 'FIXED') return true;
-            const unitInd = indicatorProperties[ind.tipoIndicador]?.unit;
-            return unitInd === unitA;
-        });
+        const getFilteredIndicators = () => {
+            if (lado === 'A') {
+                return indicadores;
+            }
+            const unitA = getOperandUnit(condicao.operandoATipo, condicao.operandoAReferencia);
+            if (!unitA || unitA === 'FIXED') {
+                return indicadores;
+            }
+            return indicadores.filter(ind => {
+                const unitInd = indicatorProperties[ind.tipoIndicador]?.unit;
+                return unitInd === unitA;
+            });
+        };
 
         const inputComponent = () => {
             switch (condicao[tipoKey]) {
@@ -81,7 +125,7 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                                 label="Indicador"
                                 onChange={(e) => handleChange(refKey, e.target.value)}
                             >
-                                {filteredIndicators.map(i => <MenuItem key={i.alias} value={i.alias}>{i.alias}</MenuItem>)}
+                                {getFilteredIndicators().map(i => <MenuItem key={i.alias} value={i.alias}>{i.alias}</MenuItem>)}
                             </Select>
                         </FormControl>
                     );
@@ -93,10 +137,20 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                             size="small"
                             fullWidth
                             value={condicao[valorKey] ?? ''}
-                            onChange={(e) => handleChange(valorKey, e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                            onChange={(e) => handleValorFixoChange(lado, e.target.value)}
                             error={!!errors[errorKey]}
                             helperText={errors[errorKey] || ' '}
-                            inputProps={preventNegative ? { min: 0 } : undefined}
+                            inputProps={{
+                                min: preventNegative || isComparedToRsi ? 0 : undefined,
+                                max: isComparedToRsi ? 100 : undefined,
+                            }}
+                            InputProps={{
+                                endAdornment: isComparedToRsi && (
+                                    <InputAdornment position="end">
+                                        {tipoCondicao === 'Compra' ? 'sobrevendido' : 'sobrecomprado'}
+                                    </InputAdornment>
+                                )
+                            }}
                         />
                     );
                 case TipoOperando.PRECO_FECHAMENTO:
@@ -110,20 +164,27 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
 
     const isLastCondition = index === totalCondicoes - 1;
 
-    const filteredOptions = useMemo(() => {
+    const filteredOptionsB = useMemo(() => {
         const unitA = getOperandUnit(condicao.operandoATipo, condicao.operandoAReferencia);
-        const isCrossover = condicao.operador === OperadorComparacao.CRUZOU_PARA_CIMA || condicao.operador === OperadorComparacao.CRUZOU_PARA_BAIXO;
 
         return getTipoOperandoOptions().filter(opt => {
-            if (isCrossover && condicao.operandoATipo === TipoOperando.VALOR_FIXO && opt.value === TipoOperando.VALOR_FIXO) {
+            if (condicao.operandoATipo === TipoOperando.VALOR_FIXO && opt.value === TipoOperando.VALOR_FIXO) {
                 return false;
             }
-            if (!unitA || unitA === 'FIXED') return true;
-            if (opt.value === TipoOperando.VALOR_FIXO) return true;
-            if (opt.value === TipoOperando.PRECO_FECHAMENTO) return unitA === 'PRICE';
-            return opt.value === TipoOperando.INDICADOR;
+            if (unitA && unitA !== 'FIXED') {
+                if (opt.value === TipoOperando.VALOR_FIXO) return true;
+
+                if (opt.value === TipoOperando.INDICADOR) {
+                    return indicadores.some(ind => indicatorProperties[ind.tipoIndicador]?.unit === unitA);
+                }
+
+                const optUnit = getOperandUnit(opt.value as TipoOperando, undefined);
+                return unitA === optUnit;
+            }
+            return true;
         });
-    }, [condicao.operandoATipo, condicao.operandoAReferencia, condicao.operador]);
+    }, [condicao.operandoATipo, condicao.operandoAReferencia, indicadores]);
+
 
     return (
         <>
@@ -166,7 +227,7 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                                 label="Comparado"
                                 onChange={(e) => handleChange('operandoBTipo', e.target.value)}
                             >
-                                {filteredOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                                {filteredOptionsB.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
                             </Select>
                         </FormControl>
                         {renderOperandoInput('B')}
