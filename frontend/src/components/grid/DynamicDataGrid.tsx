@@ -161,7 +161,7 @@ export default function DynamicDataGrid<T extends BaseEntity>(props: DynamicData
                 }}
                 pageSizeOptions={[20, 50, 100]}
                 disableRowSelectionOnClick
-                showToolbar // MANTIDO
+                showToolbar
                 slots={{
                     toolbar: GridToolbar,
                 }}

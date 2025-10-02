@@ -1,29 +1,37 @@
 import React, { useCallback } from 'react';
-import GenericFormPage from '../../components/common/forms/GenericFormPage';
-import { operadorFormConfig } from './operadorConfig';
 import { createOperador, updateOperador, getOperadorById } from '../../services/operadorService';
-import type {CriarOperadorDTO, Operador} from '../../types/operador';
+import type { CriarOperadorDTO, Operador } from '../../types/operador';
+import DynamicForm from '../../components/common/forms/DynamicForm';
+import { operadorFormMetadata } from './operadorFormMetadata';
 
-const OperadorForm: React.FC = () => {
+interface OperadorFormProps {
+    entityId: string | null;
+    onClose: () => void;
+    onSave: () => void;
+}
+
+const OperadorForm: React.FC<OperadorFormProps> = ({ entityId, onClose, onSave }) => {
+
     const handleSubmit = useCallback(async (formData: Record<string, any>) => {
         const operadorData = formData as CriarOperadorDTO;
         await createOperador(operadorData);
-    }, []);
+        onSave();
+    }, [onSave]);
 
     const handleUpdate = useCallback(async (id: string, formData: Record<string, any>) => {
         const operadorData = formData as CriarOperadorDTO;
         await updateOperador(id, operadorData);
-    }, []);
+        onSave();
+    }, [onSave]);
 
     return (
-        <GenericFormPage<Operador>
-            title="Operadores - Criar"
-            description="O Operador representa suas credenciais na corretora. As chaves de API (Access Key e Secret Key) são necessárias para que o sistema possa realizar operações em seu nome."
-            formConfig={operadorFormConfig}
+        <DynamicForm<Operador>
+            metadata={operadorFormMetadata}
+            entityId={entityId}
+            fetcher={getOperadorById}
             onSubmit={handleSubmit}
             onUpdate={handleUpdate}
-            fetcher={getOperadorById}
-            backRoute="/operadores"
+            onClose={onClose}
         />
     );
 };
