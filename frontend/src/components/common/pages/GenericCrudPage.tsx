@@ -1,4 +1,3 @@
-// frontend/src/components/common/pages/GenericCrudPage.tsx
 import { useEffect, useState, useCallback, type ComponentType } from 'react';
 import { Paper, Typography, Box, Alert, Fab } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
