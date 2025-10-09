@@ -43,12 +43,13 @@ interface DynamicFormProps<T extends BaseEntity> {
     onClose: () => void;
     templates?: Record<string, React.ComponentType<TemplateProps>>;
     customValidator?: (formData: Record<string, any>) => Record<string, string | null>;
+    initialData?: Record<string, any>;
 }
 
-const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubmit, onUpdate, onClose, templates = {}, customValidator }: DynamicFormProps<T>) => {
+const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubmit, onUpdate, onClose, templates = {}, customValidator, initialData = {} }: DynamicFormProps<T>) => {
     const isEditMode = !!entityId;
     const [activeStep, setActiveStep] = useState(0);
-    const [formData, setFormData] = useState<Record<string, any>>({});
+    const [formData, setFormData] = useState<Record<string, any>>(initialData);
     const [errors, setErrors] = useState<Record<string, string | null>>({});
     const [loading, setLoading] = useState<boolean>(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'error' });
@@ -89,8 +90,10 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
                     setSnackbar({ open: true, message: 'Falha ao carregar dados existentes.', severity: 'error' });
                 })
                 .finally(() => setLoading(false));
+        } else {
+            setFormData(initialData);
         }
-    }, [entityId, isEditMode, fetcher, metadata]);
+    }, [entityId, isEditMode, fetcher, metadata, initialData]);
 
     const handleChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -210,6 +213,10 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
     };
 
     const renderField = (field: FormFieldMetadata) => {
+        if (field.hidden) {
+            return null;
+        }
+
         const commonProps = {
             key: field.field,
             label: field.label,
