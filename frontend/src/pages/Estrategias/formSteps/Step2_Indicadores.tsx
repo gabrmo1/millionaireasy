@@ -56,7 +56,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Indicadores</Typography>
-                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd}>Adicionar Indicador</Button>
+                <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd}>Adicionar</Button>
             </Box>
 
             {errors.indicadores && <Alert severity="error" sx={{ mb: 2 }}>{errors.indicadores}</Alert>}
@@ -90,7 +90,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
                                     size="small"
                                     value={indicador.parametros[param.key] || ''}
                                     onChange={(e) => handleParamChange(index, param.key, e.target.value)}
-                                    inputProps={{ min: param.min || 1, max: param.max }}
+                                    inputProps={{ min: param.min, max: param.max }}
                                     error={!!errors[`indicador_${index}_param_${param.key}`]}
                                     helperText={errors[`indicador_${index}_param_${param.key}`] || ' '}
                                 />

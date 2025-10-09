@@ -17,11 +17,17 @@ export interface FormFieldMetadata {
     };
 }
 
+export interface TemplateMetadata {
+    sequence: number;
+    name: string;
+    width: number;
+}
+
 export interface FormRowMetadata {
     number: number;
     subtitle?: string;
     formFields?: FormFieldMetadata[];
-    templates?: any[]; // Para templates customizados no futuro
+    templates?: TemplateMetadata[];
 }
 
 export interface FormStepMetadata {
