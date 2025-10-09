@@ -1,42 +1,25 @@
 import React from 'react';
-import { Box, Button, Typography, Alert, FormControlLabel, Checkbox, Collapse, TextField, Divider } from '@mui/material';
+import { Box, Button, Typography, Alert } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CondicaoForm from '../CondicaoForm';
 import type { CondicaoDTO, IndicadorConfigDTO } from '../../../types/estrategia';
 
-interface FormDataProps {
-    vendaApenasPorLucro?: boolean;
-    percentualLucro?: string;
-}
-
 interface Step4Props {
-    formData: FormDataProps;
     indicadores: IndicadorConfigDTO[];
     condicoes: CondicaoDTO[];
     onAdd: () => void;
     onRemove: (index: number) => void;
     onUpdate: (index: number, updated: CondicaoDTO) => void;
-    handleFieldChange: (name: string, value: any) => void;
     errors: Record<string, string | null>;
 }
 
 const Step4_RegrasVenda: React.FC<Step4Props> = (props) => {
-    const { formData, indicadores, condicoes, onAdd, onRemove, onUpdate, handleFieldChange, errors } = props;
+    const { indicadores, condicoes, onAdd, onRemove, onUpdate, errors } = props;
 
     const isLastCondition = (index: number) => index === condicoes.length - 1;
 
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>Parâmetros de Venda</Typography>
-            <FormControlLabel control={<Checkbox checked={!!formData.vendaApenasPorLucro} onChange={(e) => handleFieldChange('vendaApenasPorLucro', e.target.checked)} name="vendaApenasPorLucro" size="small" />} label="Venda por Take Profit (Lucro)" />
-            <Collapse in={!!formData.vendaApenasPorLucro} timeout="auto" unmountOnExit>
-                <Box sx={{ pl: 2, pt: 1.5, ml: 1.5, mt: 1 }}>
-                    <TextField label="% de Lucro para Venda" type="number" size="small" fullWidth value={formData.percentualLucro ?? ''} onChange={(e) => handleFieldChange('percentualLucro', e.target.value)} sx={{ maxWidth: '300px' }} error={!!errors.percentualLucro} helperText={errors.percentualLucro || ' '} />
-                </Box>
-            </Collapse>
-
-            <Divider sx={{ my: 2 }} />
-
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Condições de Venda (Opcional)</Typography>
                 <Button startIcon={<AddCircleOutlineIcon />} onClick={onAdd} disabled={indicadores.length === 0}>Adicionar</Button>

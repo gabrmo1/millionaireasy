@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box,
     Stepper,
@@ -12,12 +12,27 @@ import {
     TextField,
     Divider,
     InputAdornment,
-    IconButton
+    IconButton,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    FormHelperText,
+    FormControlLabel,
+    Checkbox,
+    StepButton
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import Grid from '@mui/material/GridLegacy';
-import type { FormMetadata, FormFieldMetadata } from '../../../types/formMetadata';
+import type { FormMetadata, FormFieldMetadata, TemplateMetadata } from '../../../types/formMetadata';
 import type { BaseEntity } from '../../../types/operador';
+import { formatLeadingZeros } from "../../../utils/inputFormatters.ts";
+
+export interface TemplateProps {
+    formData: Record<string, any>;
+    errors: Record<string, string | null>;
+    handleChange: (field: string, value: any) => void;
+}
 
 interface DynamicFormProps<T extends BaseEntity> {
     metadata: FormMetadata;
@@ -26,9 +41,11 @@ interface DynamicFormProps<T extends BaseEntity> {
     onSubmit: (formData: Record<string, any>) => Promise<void>;
     onUpdate?: (id: string, formData: Record<string, any>) => Promise<void>;
     onClose: () => void;
+    templates?: Record<string, React.ComponentType<TemplateProps>>;
+    customValidator?: (formData: Record<string, any>) => Record<string, string | null>;
 }
 
-const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubmit, onUpdate, onClose }: DynamicFormProps<T>) => {
+const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubmit, onUpdate, onClose, templates = {}, customValidator }: DynamicFormProps<T>) => {
     const isEditMode = !!entityId;
     const [activeStep, setActiveStep] = useState(0);
     const [formData, setFormData] = useState<Record<string, any>>({});
@@ -36,13 +53,36 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
     const [loading, setLoading] = useState<boolean>(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'error' });
     const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+    const [stepErrors, setStepErrors] = useState<boolean[]>(new Array(metadata.steps.length).fill(false));
+
+    const fieldToStepMap = useMemo(() => {
+        const map = new Map<string, number>();
+        metadata.steps.forEach((step, index) => {
+            step.rows.forEach(row => {
+                row.formFields?.forEach(field => {
+                    map.set(field.field, index);
+                });
+            });
+        });
+        return map;
+    }, [metadata]);
 
     useEffect(() => {
         if (isEditMode && fetcher && entityId) {
             setLoading(true);
             fetcher(entityId)
                 .then(data => {
-                    setFormData(data);
+                    const initialData: Record<string, any> = { ...data };
+                    metadata.steps.forEach(step => {
+                        step.rows.forEach(row => {
+                            row.formFields?.forEach(field => {
+                                if ((field.type === 'double' || field.type === 'integer') && initialData[field.field] !== undefined && initialData[field.field] !== null) {
+                                    initialData[field.field] = String(initialData[field.field]);
+                                }
+                            });
+                        });
+                    });
+                    setFormData(initialData);
                 })
                 .catch(err => {
                     console.error("Falha ao carregar dados para edição:", err);
@@ -50,7 +90,7 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
                 })
                 .finally(() => setLoading(false));
         }
-    }, [entityId, isEditMode, fetcher]);
+    }, [entityId, isEditMode, fetcher, metadata]);
 
     const handleChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -59,48 +99,97 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
         }
     };
 
+    const handleNumericChange = (field: FormFieldMetadata, value: string) => {
+        const formattedValue = formatLeadingZeros(value.replace(/[^0-9.]/g, ''));
+        handleChange(field.field, formattedValue);
+    };
+
     const handleTogglePasswordVisibility = (field: string) => {
         setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
     };
 
-    const validateStep = (stepIndex: number): boolean => {
-        const step = metadata.steps[stepIndex];
-        const newErrors: Record<string, string | null> = {};
-        let isValid = true;
+    const validateFormFields = (): { errors: Record<string, string | null>, stepErrors: boolean[] } => {
+        const newTotalErrors: Record<string, string | null> = {};
+        const newStepErrors = new Array(metadata.steps.length).fill(false);
 
-        step.rows.forEach(row => {
-            row.formFields?.forEach(field => {
-                const value = formData[field.field];
-                if (!field.nullable && (value === undefined || value === null || value === '')) {
-                    newErrors[field.field] = `${field.label} é obrigatório.`;
-                    isValid = false;
-                }
-                if (field.maxLength && String(value || '').length > field.maxLength) {
-                    newErrors[field.field] = `O campo deve ter no máximo ${field.maxLength} caracteres.`;
-                    isValid = false;
-                }
+        metadata.steps.forEach((step, index) => {
+            let stepHasError = false;
+            step.rows.forEach(row => {
+                row.formFields?.forEach(field => {
+                    const value = formData[field.field];
+                    let hasError = false;
+                    if (!field.nullable && (value === undefined || value === null || value === '')) {
+                        newTotalErrors[field.field] = `${field.label} é obrigatório.`;
+                        hasError = true;
+                    }
+                    if (field.maxLength && String(value || '').length > field.maxLength) {
+                        newTotalErrors[field.field] = `O campo deve ter no máximo ${field.maxLength} caracteres.`;
+                        hasError = true;
+                    }
+                    if (field.minValue !== undefined && value !== '' && Number(value) < field.minValue) {
+                        newTotalErrors[field.field] = `O valor deve ser no mínimo ${field.minValue}.`;
+                        hasError = true;
+                    }
+                    if (field.maxValue !== undefined && value !== '' && Number(value) > field.maxValue) {
+                        newTotalErrors[field.field] = `O valor deve ser no máximo ${field.maxValue}.`;
+                        hasError = true;
+                    }
+                    if (hasError) {
+                        stepHasError = true;
+                    }
+                });
             });
+            if (stepHasError) {
+                newStepErrors[index] = true;
+            }
         });
-
-        setErrors(prev => ({ ...prev, ...newErrors }));
-        return isValid;
+        return { errors: newTotalErrors, stepErrors: newStepErrors };
     };
 
 
     const handleNext = () => {
-        if (validateStep(activeStep)) {
-            setActiveStep(prev => prev + 1);
-        }
+        setActiveStep(prev => prev + 1);
     };
 
     const handleBack = () => setActiveStep(prev => prev - 1);
 
+    const handleStep = (step: number) => () => {
+        setActiveStep(step);
+    };
+
     const handleSubmit = async () => {
-        if (!validateStep(activeStep)) {
-            setSnackbar({ open: true, message: 'Por favor, corrija os erros no formulário.', severity: 'error' });
+        const fieldValidation = validateFormFields();
+        let customErrors: Record<string, string | null> = {};
+
+        if (customValidator) {
+            customErrors = customValidator(formData);
+            if (Object.values(customErrors).some(e => e !== null)) {
+                // Heurística para erros que não são de um campo específico (ex: erro geral de indicadores)
+                if (customErrors.indicadores) {
+                    const indicatorsStepIndex = metadata.steps.findIndex(s => s.title === 'Indicadores');
+                    if (indicatorsStepIndex !== -1) fieldValidation.stepErrors[indicatorsStepIndex] = true;
+                }
+                // Marca o step com erro para cada campo do validador customizado
+                Object.keys(customErrors).forEach(fieldKey => {
+                    if (fieldToStepMap.has(fieldKey)) {
+                        const stepIndex = fieldToStepMap.get(fieldKey)!;
+                        fieldValidation.stepErrors[stepIndex] = true;
+                    }
+                });
+            }
+        }
+
+        const allErrors = { ...fieldValidation.errors, ...customErrors };
+
+        if (Object.values(allErrors).some(e => e !== null)) {
+            setErrors(allErrors);
+            setStepErrors(fieldValidation.stepErrors);
+            setSnackbar({ open: true, message: 'Existem erros no formulário. Verifique as etapas marcadas em vermelho.', severity: 'error' });
             return;
         }
 
+        setErrors({});
+        setStepErrors(new Array(metadata.steps.length).fill(false));
         setLoading(true);
         try {
             if (isEditMode && onUpdate && entityId) {
@@ -116,21 +205,36 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
         }
     };
 
+    const processDynamicText = (text: string): string => {
+        return text.replace(/\${(.*?)}/g, (_, key) => formData[key] || '');
+    };
+
     const renderField = (field: FormFieldMetadata) => {
+        const commonProps = {
+            key: field.field,
+            label: field.label,
+            name: field.field,
+            required: !field.nullable,
+            error: !!errors[field.field],
+        };
+
+        const adornment = field.inputAdornment ? (
+            <InputAdornment position={field.inputAdornment.position}>
+                {processDynamicText(field.inputAdornment.text)}
+            </InputAdornment>
+        ) : null;
+
+
         switch (field.type) {
             case 'password':
                 return (
                     <TextField
-                        key={field.field}
-                        label={field.label}
-                        name={field.field}
+                        {...commonProps}
                         type={showPassword[field.field] ? 'text' : 'password'}
                         value={formData[field.field] ?? ''}
                         onChange={(e) => handleChange(field.field, e.target.value)}
-                        required={!field.nullable}
                         fullWidth
                         size="small"
-                        error={!!errors[field.field]}
                         helperText={errors[field.field] || field.description || ' '}
                         InputProps={{
                             endAdornment: (
@@ -148,24 +252,73 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
                         }}
                     />
                 );
+            case 'double':
+            case 'integer':
+                return (
+                    <TextField
+                        {...commonProps}
+                        type="number"
+                        value={formData[field.field] ?? ''}
+                        onChange={(e) => handleNumericChange(field, e.target.value)}
+                        fullWidth
+                        size="small"
+                        helperText={errors[field.field] || processDynamicText(field.description || ' ')}
+                        inputProps={{ min: field.minValue, max: field.maxValue }}
+                        InputProps={{
+                            [field.inputAdornment?.position === 'start' ? 'startAdornment' : 'endAdornment']: adornment
+                        }}
+                    />
+                )
+            case 'enum':
+                return (
+                    <FormControl fullWidth size="small" {...commonProps}>
+                        <InputLabel>{field.label}</InputLabel>
+                        <Select
+                            label={field.label}
+                            value={formData[field.field] ?? ''}
+                            onChange={(e) => handleChange(field.field, e.target.value)}
+                        >
+                            {field.options?.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+                        </Select>
+                        <FormHelperText>{errors[field.field] || field.description || ' '}</FormHelperText>
+                    </FormControl>
+                )
+            case 'boolean':
+                return (
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={!!formData[field.field]}
+                                onChange={(e) => handleChange(field.field, e.target.checked)}
+                                name={field.field}
+                                size="small"
+                            />
+                        }
+                        label={field.label}
+                    />
+                )
             case 'string':
             default:
                 return (
                     <TextField
-                        key={field.field}
-                        label={field.label}
-                        name={field.field}
-                        type={field.type}
+                        {...commonProps}
+                        type="text"
                         value={formData[field.field] ?? ''}
                         onChange={(e) => handleChange(field.field, e.target.value)}
-                        required={!field.nullable}
                         fullWidth
                         size="small"
-                        error={!!errors[field.field]}
                         helperText={errors[field.field] || field.description || ' '}
                     />
                 );
         }
+    };
+
+    const renderTemplate = (template: TemplateMetadata) => {
+        const TemplateComponent = templates[template.name];
+        if (!TemplateComponent) {
+            return <Alert severity="error">Template "{template.name}" não encontrado.</Alert>;
+        }
+        return <TemplateComponent formData={formData} errors={errors} handleChange={handleChange} />;
     };
 
     const currentStep = metadata.steps[activeStep];
@@ -173,10 +326,12 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Stepper activeStep={activeStep} sx={{ px: 2, pt: 2, mb: 2 }}>
-                {stepsTitles.map((label) => (
+            <Stepper nonLinear activeStep={activeStep} sx={{ px: 2, pt: 2, mb: 2 }}>
+                {stepsTitles.map((label, index) => (
                     <Step key={label}>
-                        <StepLabel>{label}</StepLabel>
+                        <StepButton color="inherit" onClick={handleStep(index)}>
+                            <StepLabel error={stepErrors[index]}>{label}</StepLabel>
+                        </StepButton>
                     </Step>
                 ))}
             </Stepper>
@@ -197,6 +352,11 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
                                     {row.formFields?.map(field => (
                                         <Grid item xs={12} sm={Number(field.fieldSize)} key={field.sequence}>
                                             {renderField(field)}
+                                        </Grid>
+                                    ))}
+                                    {row.templates?.map(template => (
+                                        <Grid item xs={12} sm={template.width} key={template.sequence}>
+                                            {renderTemplate(template)}
                                         </Grid>
                                     ))}
                                 </Grid>
