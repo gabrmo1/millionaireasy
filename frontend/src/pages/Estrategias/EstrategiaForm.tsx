@@ -22,6 +22,15 @@ const templates = {
     'AdicionarRegrasVendaTemplate': AdicionarRegrasVendaTemplate,
 };
 
+const initialData = {
+    indicadoresConfig: [],
+    condicoesCompra: [],
+    condicoesVenda: [],
+    vendaApenasPorLucro: false,
+    percentualLucro: 10,
+    stablecoin: "USDT"
+};
+
 const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSave }) => {
 
     const estrategiaCustomValidator = (formData: Record<string, any>): Record<string, string | null> => {
@@ -94,6 +103,7 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
             onClose={onClose}
             templates={templates}
             customValidator={estrategiaCustomValidator}
+            initialData={initialData}
         />
     );
 };

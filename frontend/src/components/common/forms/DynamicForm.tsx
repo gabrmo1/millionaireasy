@@ -46,7 +46,9 @@ interface DynamicFormProps<T extends BaseEntity> {
     initialData?: Record<string, any>;
 }
 
-const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubmit, onUpdate, onClose, templates = {}, customValidator, initialData = {} }: DynamicFormProps<T>) => {
+const EMPTY_DATA = {};
+
+const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubmit, onUpdate, onClose, templates = {}, customValidator, initialData = EMPTY_DATA }: DynamicFormProps<T>) => {
     const isEditMode = !!entityId;
     const [activeStep, setActiveStep] = useState(0);
     const [formData, setFormData] = useState<Record<string, any>>(initialData);
@@ -167,12 +169,10 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
         if (customValidator) {
             customErrors = customValidator(formData);
             if (Object.values(customErrors).some(e => e !== null)) {
-                // Heurística para erros que não são de um campo específico (ex: erro geral de indicadores)
                 if (customErrors.indicadores) {
                     const indicatorsStepIndex = metadata.steps.findIndex(s => s.title === 'Indicadores');
                     if (indicatorsStepIndex !== -1) fieldValidation.stepErrors[indicatorsStepIndex] = true;
                 }
-                // Marca o step com erro para cada campo do validador customizado
                 Object.keys(customErrors).forEach(fieldKey => {
                     if (fieldToStepMap.has(fieldKey)) {
                         const stepIndex = fieldToStepMap.get(fieldKey)!;
