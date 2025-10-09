@@ -10,6 +10,7 @@ export interface FormFieldMetadata {
     minValue?: number;
     maxValue?: number;
     maxLength?: number;
+    hidden?: boolean;
     inputAdornment?: {
         text: string;
         position: 'start' | 'end';
