@@ -1,9 +1,11 @@
 import api from './api';
-import type { SymbolInfo } from '../types/mexc';
+import type { SymbolInfo, PaginatedResponse } from '../types/mexc';
 
-export const getStablecoinPairs = async (): Promise<SymbolInfo[]> => {
-    const { data } = await api.get<SymbolInfo[]>('/v1/mexc-data/stablecoin-pairs');
-    return data.sort((a, b) => a.symbol.localeCompare(b.symbol));
+export const getStablecoinPairs = async (quoteAsset: string, page = 0, size = 50, searchTerm = ''): Promise<PaginatedResponse<SymbolInfo>> => {
+    const { data } = await api.get<PaginatedResponse<SymbolInfo>>('/v1/mexc-data/stablecoin-pairs', {
+        params: { page, size, sort: 'symbol', quoteAsset, searchTerm }
+    });
+    return data;
 };
 
 export const getStablecoins = async (): Promise<string[]> => {
