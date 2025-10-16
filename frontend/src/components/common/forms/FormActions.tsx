@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button } from '@mui/material';
+import { Box, Button, CircularProgress } from '@mui/material';
 
 interface FormActionsProps {
     activeStep: number;
@@ -20,6 +20,8 @@ const FormActions: React.FC<FormActionsProps> = ({
                                                      handleNext,
                                                      handleSubmit
                                                  }) => {
+    const isLastStep = activeStep === totalSteps - 1;
+
     return (
         <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -39,10 +41,15 @@ const FormActions: React.FC<FormActionsProps> = ({
                     )}
                     <Button
                         variant="contained"
-                        onClick={activeStep === totalSteps - 1 ? handleSubmit : handleNext}
+                        onClick={isLastStep ? handleSubmit : handleNext}
                         disabled={loading}
+                        sx={{ minWidth: '95px' }}
                     >
-                        {activeStep === totalSteps - 1 ? 'Salvar' : 'Avançar'}
+                        {loading && isLastStep ? (
+                            <CircularProgress size={24} color="inherit" />
+                        ) : (
+                            isLastStep ? 'Salvar' : 'Avançar'
+                        )}
                     </Button>
                 </Box>
             </Box>
