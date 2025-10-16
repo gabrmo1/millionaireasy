@@ -6,7 +6,8 @@ export const useFormStateAndLifecycle = <T extends BaseEntity>(
     entityId: string | null,
     fetcher: ((id: string) => Promise<T>) | undefined,
     metadata: FormMetadata,
-    initialData: Record<string, any>
+    initialData: Record<string, any>,
+    dataTransformer?: (data: T) => Record<string, any>
 ) => {
     const isEditMode = !!entityId;
     const [formData, setFormData] = useState<Record<string, any>>(initialData);
@@ -18,7 +19,9 @@ export const useFormStateAndLifecycle = <T extends BaseEntity>(
             setLoading(true);
             fetcher(entityId)
                 .then(data => {
-                    const fetchedData: Record<string, any> = { ...data };
+                    const transformedData = dataTransformer ? dataTransformer(data) : { ...data };
+                    const fetchedData: Record<string, any> = transformedData;
+
                     metadata.steps.forEach(step => {
                         step.rows.forEach(row => {
                             row.formFields?.forEach(field => {
@@ -38,7 +41,7 @@ export const useFormStateAndLifecycle = <T extends BaseEntity>(
         } else {
             setFormData(initialData);
         }
-    }, [entityId, isEditMode, fetcher, metadata, initialData]);
+    }, [entityId, isEditMode, fetcher, metadata, initialData, dataTransformer]);
 
     return {
         formData,

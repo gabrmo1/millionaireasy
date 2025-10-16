@@ -60,6 +60,14 @@ const OperacaoForm: React.FC<OperacaoFormProps> = ({ entityId, onClose, onSave }
         onSave();
     }, [onSave]);
 
+    const dataTransformer = (data: Operacao) => {
+        return {
+            ...data,
+            idOperador: data.operador?.id,
+            idEstrategia: data.estrategia?.id,
+        };
+    };
+
     return (
         <DynamicForm<Operacao>
             metadata={operacaoFormMetadata}
@@ -71,6 +79,7 @@ const OperacaoForm: React.FC<OperacaoFormProps> = ({ entityId, onClose, onSave }
             templates={templates}
             customValidator={customValidator}
             initialData={initialData}
+            dataTransformer={dataTransformer}
         />
     );
 };

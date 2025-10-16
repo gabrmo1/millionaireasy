@@ -32,6 +32,7 @@ interface DynamicFormProps<T extends BaseEntity> {
     templates?: Record<string, React.ComponentType<TemplateProps>>;
     customValidator?: (formData: Record<string, any>) => Record<string, string | null>;
     initialData?: Record<string, any>;
+    dataTransformer?: (data: T) => Record<string, any>;
 }
 
 const EMPTY_DATA = {};
@@ -45,7 +46,8 @@ const DynamicForm = <T extends BaseEntity>({
                                                onClose,
                                                templates = {},
                                                customValidator,
-                                               initialData = EMPTY_DATA
+                                               initialData = EMPTY_DATA,
+                                               dataTransformer
                                            }: DynamicFormProps<T>) => {
     const isEditMode = !!entityId;
     const [activeStep, setActiveStep] = useState(0);
@@ -54,7 +56,8 @@ const DynamicForm = <T extends BaseEntity>({
         entityId,
         fetcher,
         metadata,
-        initialData
+        initialData,
+        dataTransformer
     );
 
     const { errors, stepErrors, setErrors, validate } = useFormValidation(metadata, formData, customValidator);
