@@ -169,16 +169,38 @@ const DynamicForm = <T extends BaseEntity>({ metadata, entityId, fetcher, onSubm
         if (customValidator) {
             customErrors = customValidator(formData);
             if (Object.values(customErrors).some(e => e !== null)) {
-                if (customErrors.indicadores) {
-                    const indicatorsStepIndex = metadata.steps.findIndex(s => s.title === 'Indicadores');
-                    if (indicatorsStepIndex !== -1) fieldValidation.stepErrors[indicatorsStepIndex] = true;
-                }
                 Object.keys(customErrors).forEach(fieldKey => {
                     if (fieldToStepMap.has(fieldKey)) {
                         const stepIndex = fieldToStepMap.get(fieldKey)!;
                         fieldValidation.stepErrors[stepIndex] = true;
                     }
                 });
+
+                const indicatorsStepIndex = metadata.steps.findIndex(s => s.title === 'Indicadores');
+                if (indicatorsStepIndex !== -1) {
+                    const hasIndicatorError = Object.keys(customErrors).some(key =>
+                        key === 'indicadores' || key.startsWith('indicador_')
+                    );
+                    if (hasIndicatorError) {
+                        fieldValidation.stepErrors[indicatorsStepIndex] = true;
+                    }
+                }
+
+                const compraStepIndex = metadata.steps.findIndex(s => s.title === 'Regras de compra');
+                if (compraStepIndex !== -1) {
+                    const hasCompraError = Object.keys(customErrors).some(key => key.startsWith('condicao_compra_'));
+                    if (hasCompraError) {
+                        fieldValidation.stepErrors[compraStepIndex] = true;
+                    }
+                }
+
+                const vendaStepIndex = metadata.steps.findIndex(s => s.title === 'Regras de Venda');
+                if (vendaStepIndex !== -1) {
+                    const hasVendaError = Object.keys(customErrors).some(key => key.startsWith('condicao_venda_'));
+                    if (hasVendaError) {
+                        fieldValidation.stepErrors[vendaStepIndex] = true;
+                    }
+                }
             }
         }
 

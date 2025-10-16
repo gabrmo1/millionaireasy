@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import DynamicForm from '../../components/common/forms/DynamicForm';
-import type { CriarEstrategiaDTO, Estrategia, IndicadorConfigDTO } from '../../types/estrategia';
+import type { CriarEstrategiaDTO, Estrategia, IndicadorConfigDTO, CondicaoDTO } from '../../types/estrategia';
 import { getEstrategiaById, createEstrategia, updateEstrategia } from '../../services/estrategiaService';
 import { estrategiaFormMetadata } from './estrategiaFormMetadata';
 import { indicadorParamsConfig } from './indicadorParamsConfig';
@@ -69,6 +69,24 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
                 errors.percentualLucro = 'Deve ser no mínimo 0.01.';
             }
         }
+
+        const validateCondicoes = (condicoes: CondicaoDTO[], tipo: 'Compra' | 'Venda') => {
+            if (!condicoes) return;
+            condicoes.forEach((condicao, index) => {
+                const checkOperandValue = (operandoTipo: any, operandoValor: any, lado: 'A' | 'B') => {
+                    if (operandoTipo === 'VALOR_FIXO' && (operandoValor === undefined || operandoValor === null)) {
+                        const errorKey = `condicao_${tipo.toLowerCase()}_${index}_valor_${lado.toLowerCase()}`;
+                        errors[errorKey] = 'Obrigatório.';
+                    }
+                };
+
+                checkOperandValue(condicao.operandoATipo, condicao.operandoAValor, 'A');
+                checkOperandValue(condicao.operandoBTipo, condicao.operandoBValor, 'B');
+            });
+        };
+
+        validateCondicoes(formData.condicoesCompra, 'Compra');
+        validateCondicoes(formData.condicoesVenda, 'Venda');
 
         return errors;
     };

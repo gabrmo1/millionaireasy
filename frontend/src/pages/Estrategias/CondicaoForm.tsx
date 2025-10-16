@@ -5,7 +5,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { OperadorLogico, TipoOperando, OperadorComparacao, TipoIndicador } from '../../types/enums';
 import type { CondicaoDTO, IndicadorConfigDTO } from '../../types/estrategia';
 import { getTipoOperandoOptions, getOperadorComparacaoOptions, indicatorProperties, type IndicatorUnit } from '../../utils/enumMappings';
-import { formatLeadingZeros } from "../../utils/inputFormatters";
 
 interface CondicaoFormProps {
     condicao: CondicaoDTO;
@@ -68,20 +67,24 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
         const otherSideTipoKey = lado === 'A' ? 'operandoBTipo' : 'operandoATipo';
         const otherSideRefKey = lado === 'A' ? 'operandoBReferencia' : 'operandoAReferencia';
 
-        const formattedStringValue = formatLeadingZeros(value.replace(/[^0-9.]/g, ''));
+        // Sanitiza o input para previnir valores como "--" ou "5-5"
+        const sanitizedValue = value.replace(/(?!^-)[^0-9.]/g, "");
+
         let finalValue: number | undefined = undefined;
 
-        if (formattedStringValue !== '') {
-            let numValue = parseFloat(formattedStringValue);
+        if (sanitizedValue !== '' && sanitizedValue !== '-') {
+            let numValue = parseFloat(sanitizedValue);
 
-            if (condicao[tipoKey] === TipoOperando.VALOR_FIXO &&
-                condicao[otherSideTipoKey] === TipoOperando.INDICADOR &&
-                isRsiIndicator(condicao[otherSideRefKey])) {
+            if (!isNaN(numValue)) {
+                if (condicao[tipoKey] === TipoOperando.VALOR_FIXO &&
+                    condicao[otherSideTipoKey] === TipoOperando.INDICADOR &&
+                    isRsiIndicator(condicao[otherSideRefKey])) {
 
-                if (numValue > 100) numValue = 100;
-                if (numValue < 0) numValue = 0;
+                    if (numValue > 100) numValue = 100;
+                    if (numValue < 0) numValue = 0;
+                }
+                finalValue = numValue;
             }
-            finalValue = numValue;
         }
 
         handleChange(valorKey, finalValue);
