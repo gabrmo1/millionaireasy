@@ -9,6 +9,7 @@ export const estrategiaFormMetadata: FormMetadata = {
             rows: [
                 {
                     number: 1,
+                    subtitle: "Informações",
                     formFields: [
                         {
                             sequence: 1,
