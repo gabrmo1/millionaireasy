@@ -80,8 +80,17 @@ const EstrategiaForm: React.FC<EstrategiaFormProps> = ({ entityId, onClose, onSa
                     }
                 };
 
+                const checkOperandReferencia = (operandoTipo: any, operandoReferencia: any, lado: 'A' | 'B') => {
+                    if (operandoTipo === 'INDICADOR' && (!operandoReferencia || operandoReferencia.trim() === '')) {
+                        const errorKey = `condicao_${tipo.toLowerCase()}_${index}_referencia_${lado.toLowerCase()}`;
+                        errors[errorKey] = 'Obrigatório.';
+                    }
+                };
+
                 checkOperandValue(condicao.operandoATipo, condicao.operandoAValor, 'A');
                 checkOperandValue(condicao.operandoBTipo, condicao.operandoBValor, 'B');
+                checkOperandReferencia(condicao.operandoATipo, condicao.operandoAReferencia, 'A');
+                checkOperandReferencia(condicao.operandoBTipo, condicao.operandoBReferencia, 'B');
             });
         };
 

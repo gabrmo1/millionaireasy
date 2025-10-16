@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField, InputAdornment } from '@mui/material';
+import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, Select, TextField, InputAdornment, FormHelperText } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { OperadorLogico, TipoOperando, OperadorComparacao, TipoIndicador } from '../../types/enums';
@@ -94,7 +94,8 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
         const tipoKey = lado === 'A' ? 'operandoATipo' : 'operandoBTipo';
         const refKey = lado === 'A' ? 'operandoAReferencia' : 'operandoBReferencia';
         const valorKey = lado === 'A' ? 'operandoAValor' : 'operandoBValor';
-        const errorKey = `condicao_${tipoCondicao.toLowerCase()}_${index}_valor_${lado.toLowerCase()}`;
+        const errorKeyValor = `condicao_${tipoCondicao.toLowerCase()}_${index}_valor_${lado.toLowerCase()}`;
+        const errorKeyReferencia = `condicao_${tipoCondicao.toLowerCase()}_${index}_referencia_${lado.toLowerCase()}`;
 
         const otherSideTipo = lado === 'A' ? condicao.operandoBTipo : condicao.operandoATipo;
         const otherSideRef = lado === 'A' ? condicao.operandoBReferencia : condicao.operandoAReferencia;
@@ -121,7 +122,7 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
             switch (condicao[tipoKey]) {
                 case TipoOperando.INDICADOR:
                     return (
-                        <FormControl fullWidth size="small">
+                        <FormControl fullWidth size="small" error={!!errors[errorKeyReferencia]}>
                             <InputLabel>Indicador</InputLabel>
                             <Select
                                 value={condicao[refKey] || ''}
@@ -130,6 +131,7 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                             >
                                 {getFilteredIndicators().map(i => <MenuItem key={i.alias} value={i.alias}>{i.alias}</MenuItem>)}
                             </Select>
+                            {errors[errorKeyReferencia] && <FormHelperText>{errors[errorKeyReferencia]}</FormHelperText>}
                         </FormControl>
                     );
                 case TipoOperando.VALOR_FIXO:
@@ -141,8 +143,8 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
                             fullWidth
                             value={condicao[valorKey] ?? ''}
                             onChange={(e) => handleValorFixoChange(lado, e.target.value)}
-                            error={!!errors[errorKey]}
-                            helperText={errors[errorKey] || ' '}
+                            error={!!errors[errorKeyValor]}
+                            helperText={errors[errorKeyValor] || ' '}
                             inputProps={{
                                 min: preventNegative || isComparedToRsi ? 0 : undefined,
                                 max: isComparedToRsi ? 100 : undefined,
