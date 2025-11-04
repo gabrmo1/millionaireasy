@@ -2,6 +2,7 @@ package br.com.bot_mexc.services;
 
 import br.com.bot_mexc.models.dtos.CriarEstrategiaDTO;
 import br.com.bot_mexc.models.dtos.EstrategiaDTO;
+import br.com.bot_mexc.models.dtos.IndicadorConfigDTO;
 import br.com.bot_mexc.models.entities.Estrategia;
 import br.com.bot_mexc.models.enums.TipoOperando;
 import br.com.bot_mexc.repositories.EstrategiaRepository;
@@ -14,6 +15,7 @@ import jakarta.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -52,13 +54,13 @@ public class EstrategiaService {
         if (!CollectionUtils.isEmpty(dto.condicoesCompra())) {
             estrategia.setCondicoesCompra(dto.condicoesCompra().stream()
                     .map(condicaoDto -> CondicaoCompraUtils.converterDtoParaEntidade(condicaoDto, estrategia))
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.toList()));
         }
 
         if (!CollectionUtils.isEmpty(dto.condicoesVenda())) {
             estrategia.setCondicoesVenda(dto.condicoesVenda().stream()
                     .map(condicaoDto -> CondicaoVendaUtils.converterDtoParaEntidade(condicaoDto, estrategia))
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.toList()));
         }
 
         estrategiaRepository.save(estrategia);
@@ -75,22 +77,22 @@ public class EstrategiaService {
         estrategia.getIndicadoresConfig().clear();
         estrategia.getIndicadoresConfig().addAll(dto.indicadoresConfig().stream()
                 .map(indicadorDto -> IndicadorConfigUtils.converterDtoParaEntidade(indicadorDto, estrategia))
-                .collect(Collectors.toSet()));
+                .toList());
 
-        if (estrategia.getCondicoesCompra() == null) estrategia.setCondicoesCompra(new HashSet<>());
+        if (estrategia.getCondicoesCompra() == null) estrategia.setCondicoesCompra(new ArrayList<>());
         estrategia.getCondicoesCompra().clear();
         if (!CollectionUtils.isEmpty(dto.condicoesCompra())) {
             estrategia.getCondicoesCompra().addAll(dto.condicoesCompra().stream()
                     .map(condicaoDto -> CondicaoCompraUtils.converterDtoParaEntidade(condicaoDto, estrategia))
-                    .collect(Collectors.toSet()));
+                    .toList());
         }
 
-        if (estrategia.getCondicoesVenda() == null) estrategia.setCondicoesVenda(new HashSet<>());
+        if (estrategia.getCondicoesVenda() == null) estrategia.setCondicoesVenda(new ArrayList<>());
         estrategia.getCondicoesVenda().clear();
         if (!CollectionUtils.isEmpty(dto.condicoesVenda())) {
             estrategia.getCondicoesVenda().addAll(dto.condicoesVenda().stream()
                     .map(condicaoDto -> CondicaoVendaUtils.converterDtoParaEntidade(condicaoDto, estrategia))
-                    .collect(Collectors.toSet()));
+                    .toList());
         }
 
         estrategiaRepository.save(estrategia);
@@ -106,7 +108,7 @@ public class EstrategiaService {
 
     private void validateBusinessRules(CriarEstrategiaDTO dto) {
         Set<String> aliases = dto.indicadoresConfig().stream()
-                .map(ic -> ic.alias())
+                .map(IndicadorConfigDTO::alias)
                 .collect(Collectors.toSet());
         if (aliases.size() < dto.indicadoresConfig().size()) {
             throw new ValidationException("O nome (alias) de cada indicador deve ser único dentro da estratégia.");

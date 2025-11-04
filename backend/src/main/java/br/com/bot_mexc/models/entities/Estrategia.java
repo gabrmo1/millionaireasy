@@ -1,10 +1,11 @@
-// backend/src/main/java/br/com/bot_mexc/models/entities/Estrategia.java
 package br.com.bot_mexc.models.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -24,11 +25,13 @@ public class Estrategia extends BaseEntity {
     @OneToMany(mappedBy = "estrategia", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<IndicadorConfig> indicadoresConfig;
 
+    @OrderBy("ordem ASC")
     @OneToMany(mappedBy = "estrategia", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<CondicaoCompra> condicoesCompra;
+    private List<CondicaoCompra> condicoesCompra = new ArrayList<>();
 
+    @OrderBy("ordem ASC")
     @OneToMany(mappedBy = "estrategia", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<CondicaoVenda> condicoesVenda;
+    private List<CondicaoVenda> condicoesVenda = new ArrayList<>();
 
     /*---------- Valores de Operação ----------*/
     @Column(name = "valor_operacao_fixo")
