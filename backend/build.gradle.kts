@@ -39,6 +39,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.json:json:20250517")
+
+	implementation("org.springframework.boot:spring-boot-starter-amqp")
+	implementation("org.java-websocket:Java-WebSocket:1.5.7")
+
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
 	annotationProcessor("org.projectlombok:lombok")

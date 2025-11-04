@@ -1,0 +1,29 @@
+# Ignora as dependências do host, para forçar o container a usar as suas próprias
+node_modules
+
+# Ignora artefatos de build
+dist
+dist-ssr
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Arquivos locais
+*.local
+
+# Diretórios e arquivos de IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

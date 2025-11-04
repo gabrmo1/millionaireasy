@@ -1,5 +1,4 @@
 services:
-  # Serviço do Banco de Dados PostgreSQL
   db:
     image: postgres:15-alpine
     container_name: millionaireasy-db
@@ -14,7 +13,6 @@ services:
     networks:
       - millionaireasy-net
 
-  # Serviço do Redis
   redis:
     image: redis:7-alpine
     container_name: millionaireasy-redis
@@ -23,31 +21,44 @@ services:
     networks:
       - millionaireasy-net
 
-  # Serviço do Backend (Spring Boot)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: millionaireasy-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=Mexc123!
+    networks:
+      - millionaireasy-net
+
   backend:
     container_name: millionaireasy-backend
-    # Constrói a imagem a partir do Dockerfile na pasta do backend
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    # Define as variáveis de ambiente para conexão com o banco de dados
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/mexc
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=Mexc123!
+
       - SPRING_DATA_REDIS_HOST=redis
+
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=admin
+      - SPRING_RABBITMQ_PASSWORD=Mexc123!
     depends_on:
       - db
       - redis
+      - rabbitmq
     networks:
       - millionaireasy-net
 
-  # Serviço do Frontend (React + Nginx)
   frontend:
     container_name: millionaireasy-frontend
-    # Constrói a imagem a partir do Dockerfile na pasta do frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -58,11 +69,9 @@ services:
     networks:
       - millionaireasy-net
 
-# Define a rede que os containers usarão para se comunicar
 networks:
   millionaireasy-net:
     driver: bridge
 
-# Define o volume para persistência dos dados do banco de dados
 volumes:
   postgres-data:

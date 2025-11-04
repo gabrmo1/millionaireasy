@@ -20,6 +20,21 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: 6379
 
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: 5672
+    username: ${SPRING_RABBITMQ_USERNAME:admin}
+    password: ${SPRING_RABBITMQ_PASSWORD:Mexc123!}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 5000ms
+    template:
+      retry:
+        enabled: true
+
 application:
   security:
     jwt:
