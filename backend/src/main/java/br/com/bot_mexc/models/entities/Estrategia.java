@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 @Data
@@ -27,11 +25,11 @@ public class Estrategia extends BaseEntity {
 
     @OrderBy("ordem ASC")
     @OneToMany(mappedBy = "estrategia", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<CondicaoCompra> condicoesCompra = new ArrayList<>();
+    private Set<CondicaoCompra> condicoesCompra;
 
     @OrderBy("ordem ASC")
     @OneToMany(mappedBy = "estrategia", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<CondicaoVenda> condicoesVenda = new ArrayList<>();
+    private Set<CondicaoVenda> condicoesVenda;
 
     /*---------- Valores de Operação ----------*/
     @Column(name = "valor_operacao_fixo")

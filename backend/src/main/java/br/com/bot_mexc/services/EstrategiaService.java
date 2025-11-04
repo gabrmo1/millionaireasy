@@ -15,7 +15,6 @@ import jakarta.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -54,13 +53,13 @@ public class EstrategiaService {
         if (!CollectionUtils.isEmpty(dto.condicoesCompra())) {
             estrategia.setCondicoesCompra(dto.condicoesCompra().stream()
                     .map(condicaoDto -> CondicaoCompraUtils.converterDtoParaEntidade(condicaoDto, estrategia))
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toSet()));
         }
 
         if (!CollectionUtils.isEmpty(dto.condicoesVenda())) {
             estrategia.setCondicoesVenda(dto.condicoesVenda().stream()
                     .map(condicaoDto -> CondicaoVendaUtils.converterDtoParaEntidade(condicaoDto, estrategia))
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toSet()));
         }
 
         estrategiaRepository.save(estrategia);
@@ -79,7 +78,7 @@ public class EstrategiaService {
                 .map(indicadorDto -> IndicadorConfigUtils.converterDtoParaEntidade(indicadorDto, estrategia))
                 .toList());
 
-        if (estrategia.getCondicoesCompra() == null) estrategia.setCondicoesCompra(new ArrayList<>());
+        if (estrategia.getCondicoesCompra() == null) estrategia.setCondicoesCompra(new HashSet<>());
         estrategia.getCondicoesCompra().clear();
         if (!CollectionUtils.isEmpty(dto.condicoesCompra())) {
             estrategia.getCondicoesCompra().addAll(dto.condicoesCompra().stream()
@@ -87,7 +86,7 @@ public class EstrategiaService {
                     .toList());
         }
 
-        if (estrategia.getCondicoesVenda() == null) estrategia.setCondicoesVenda(new ArrayList<>());
+        if (estrategia.getCondicoesVenda() == null) estrategia.setCondicoesVenda(new HashSet<>());
         estrategia.getCondicoesVenda().clear();
         if (!CollectionUtils.isEmpty(dto.condicoesVenda())) {
             estrategia.getCondicoesVenda().addAll(dto.condicoesVenda().stream()
