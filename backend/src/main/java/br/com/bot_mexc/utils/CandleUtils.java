@@ -1,7 +1,6 @@
 package br.com.bot_mexc.utils;
 
 import br.com.bot_mexc.models.dtos.CandleDTO;
-import br.com.bot_mexc.models.dtos.ValorMoedaDTO;
 import br.com.bot_mexc.models.entities.Candle;
 import br.com.bot_mexc.models.entities.Operacao;
 import lombok.experimental.UtilityClass;
@@ -50,6 +49,18 @@ public class CandleUtils {
                 .valorFechamento(c.closeValue())
                 .volume(c.volume())
                 .build();
+    }
+
+    public static CandleDTO converterEntidadeParaDto(Candle c) {
+        return new CandleDTO(
+                c.getDataAbertura(),
+                c.getDataFechamento(),
+                c.getValorAbertura(),
+                c.getValorFechamento(),
+                c.getMinima(),
+                c.getMaxima(),
+                c.getVolume()
+        );
     }
 
     public static List<String> montarParesDeBusca(List<Operacao> operacoes) {

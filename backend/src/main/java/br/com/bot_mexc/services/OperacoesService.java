@@ -2,12 +2,14 @@ package br.com.bot_mexc.services;
 
 import br.com.bot_mexc.builders.OperacaoBuilder;
 import br.com.bot_mexc.models.dtos.CriarOperacaoDTO;
+import br.com.bot_mexc.models.dtos.EntidadesOperacaoDTO;
 import br.com.bot_mexc.models.dtos.OperacaoDTO;
 import br.com.bot_mexc.models.entities.Estrategia;
-import br.com.bot_mexc.models.entities.Operador;
+import br.com.bot_mexc.models.enums.StatusOperacoes;
 import br.com.bot_mexc.repositories.EstrategiaRepository;
 import br.com.bot_mexc.repositories.OperacaoRepository;
 import br.com.bot_mexc.repositories.OperadorRepository;
+import br.com.bot_mexc.utils.DateUtils;
 import br.com.bot_mexc.utils.OperacoesUtils;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ValidationException;
@@ -15,22 +17,24 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 @Service
 public class OperacoesService {
 
+    private final MexcSubscriptionService subscriptionService;
+    private final EstrategiaRepository estrategiaRepository;
     private final OperadorRepository operadorRepository;
     private final OperacaoRepository operacaoRepository;
-    private final EstrategiaRepository estrategiaRepository;
     private final MexcService mexcService;
 
     public OperacoesService(OperacaoRepository operacaoRepository, OperadorRepository operadorRepository,
-                            EstrategiaRepository estrategiaRepository, MexcService mexcService) {
+                            EstrategiaRepository estrategiaRepository, MexcService mexcService,
+                            MexcSubscriptionService subscriptionService) {
         this.operacaoRepository = operacaoRepository;
         this.operadorRepository = operadorRepository;
         this.estrategiaRepository = estrategiaRepository;
         this.mexcService = mexcService;
+        this.subscriptionService = subscriptionService;
     }
 
     public List<OperacaoDTO> findAll() {
@@ -57,19 +61,67 @@ public class OperacoesService {
         final var entidades = validarEObterEntidades(request);
         var operacao = operacaoRepository.findById(id).orElseThrow(() -> new ValidationException("Operação não encontrada."));
 
+        if (operacao.getStatus() == StatusOperacoes.EM_ANDAMENTO) {
+            if (!operacao.getPar().equals(request.par()) || !operacao.getIntervalo().equals(request.intervalo())) {
+                subscriptionService.removeSubscription(operacao.getPar(), operacao.getIntervalo());
+                subscriptionService.addSubscription(request.par(), request.intervalo());
+            }
+        }
+
         OperacoesUtils.atualizarEntidadeComDto(operacao, request, entidades.operador(), entidades.estrategia());
         operacaoRepository.save(operacao);
     }
 
     @Transactional
     public void deletarOperacao(String id) {
-        if (!operacaoRepository.existsById(id))
-            throw new ValidationException("Operação não encontrada.");
+        var operacao = operacaoRepository.findById(id)
+                .orElseThrow(() -> new ValidationException("Operação não encontrada."));
+
+        if (operacao.getStatus() == StatusOperacoes.EM_ANDAMENTO) {
+            subscriptionService.removeSubscription(operacao.getPar(), operacao.getIntervalo());
+        }
 
         operacaoRepository.deleteById(id);
     }
 
-    private EntidadesOperacao validarEObterEntidades(CriarOperacaoDTO request) {
+    @Transactional
+    public void iniciarOperacao(String id) {
+        var operacao = operacaoRepository.findById(id)
+                .orElseThrow(() -> new ValidationException("Operação não encontrada."));
+
+        if (operacao.getStatus() == StatusOperacoes.EM_ANDAMENTO) {
+            throw new ValidationException("A operação já está em andamento.");
+        }
+        if (operacao.getEstrategia() == null) {
+            throw new ValidationException("Não é possível iniciar uma operação sem uma Estratégia definida.");
+        }
+
+        operacao.setStatus(StatusOperacoes.EM_ANDAMENTO);
+        operacao.setDataInicio(DateUtils.agora());
+        operacao.setDataFim(null);
+        operacaoRepository.save(operacao);
+
+        subscriptionService.addSubscription(operacao.getPar(), operacao.getIntervalo());
+    }
+
+    @Transactional
+    public void pararOperacao(String id) {
+        var operacao = operacaoRepository.findById(id)
+                .orElseThrow(() -> new ValidationException("Operação não encontrada."));
+
+        if (operacao.getStatus() == StatusOperacoes.PARADO) {
+            throw new ValidationException("A operação já está parada.");
+        }
+
+        operacao.setStatus(StatusOperacoes.PARADO);
+        operacao.setDataFim(DateUtils.agora());
+        operacaoRepository.save(operacao);
+
+        subscriptionService.removeSubscription(operacao.getPar(), operacao.getIntervalo());
+    }
+
+
+    private EntidadesOperacaoDTO validarEObterEntidades(CriarOperacaoDTO request) {
         final var operador = operadorRepository.findById(request.idOperador()).orElseThrow(() -> new ValidationException("Operador não encontrado."));
         Estrategia estrategia = null;
 
@@ -79,15 +131,15 @@ public class OperacoesService {
         if (estrategia != null)
             validarCompatibilidadeEstrategiaPar(request.par(), estrategia);
 
-        return new EntidadesOperacao(operador, estrategia);
+        return new EntidadesOperacaoDTO(operador, estrategia);
     }
 
     private void validarCompatibilidadeEstrategiaPar(String par, Estrategia estrategia) {
         if (Objects.isNull(estrategia.getValorOperacaoFixo()))
             return;
 
-        Set<String> stablecoins = mexcService.getStablecoins();
-        String quoteAsset = "";
+        final var stablecoins = mexcService.getStablecoins();
+        var quoteAsset = "";
 
         for (String stable : stablecoins) {
             if (par.endsWith(stable)) {
@@ -101,8 +153,5 @@ public class OperacoesService {
 
         if (!Objects.equals(estrategia.getStablecoin(), quoteAsset))
             throw new ValidationException("A estratégia selecionada opera com " + estrategia.getStablecoin() + ", mas o par selecionado (" + par + ") opera com " + quoteAsset + ".");
-    }
-
-    private record EntidadesOperacao(Operador operador, Estrategia estrategia) {
     }
 }

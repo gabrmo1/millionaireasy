@@ -12,21 +12,21 @@ import java.util.List;
 @Service
 public class CandleService {
 
-    private final CandleRepository candleRepository;
+    private final CandleRepository repository;
 
-    public CandleService(CandleRepository candleRepository) {
-        this.candleRepository = candleRepository;
+    public CandleService(CandleRepository repository) {
+        this.repository = repository;
     }
 
     @Async("asyncExecutor")
     public void salvarCandlesAsync(List<CandleDTO> candlesDto, String par, String intervalo) {
-        final var optionalUltimoCandle = candleRepository.findTopByParAndIntervaloOrderByDataFechamentoDesc(par, intervalo);
+        final var optionalUltimoCandle = repository.findTopByParAndIntervaloOrderByDataFechamentoDesc(par, intervalo);
         List<Candle> candlesEntity;
 
         if (optionalUltimoCandle.isPresent()) {
             final var ultimoCandle = optionalUltimoCandle.get();
             final var penultimoCandleDTO = candlesDto.get(candlesDto.size() - 2);
-            final var penultimoCandleOptional = candleRepository.findByParAndIntervaloAndDataFechamento(par, intervalo, penultimoCandleDTO.closeTime());
+            final var penultimoCandleOptional = repository.findByParAndIntervaloAndDataFechamento(par, intervalo, penultimoCandleDTO.closeTime());
 
             //Atualiza o volume do candle em aberto
             candlesDto.stream()
@@ -34,7 +34,7 @@ public class CandleService {
                     .findFirst()
                     .ifPresent(candleAberto -> {
                         ultimoCandle.setVolume(candleAberto.volume());
-                        candleRepository.save(ultimoCandle);
+                        repository.save(ultimoCandle);
                     });
 
             if (penultimoCandleOptional.isPresent()) {
@@ -42,7 +42,7 @@ public class CandleService {
 
                 if (!penultimoCandle.getVolume().equals(penultimoCandleDTO.volume())) {
                     penultimoCandle.setVolume(penultimoCandleDTO.volume());
-                    candleRepository.save(penultimoCandle);
+                    repository.save(penultimoCandle);
                 }
             }
 
@@ -60,7 +60,13 @@ public class CandleService {
         }
 
         if (!candlesEntity.isEmpty())
-            candleRepository.saveAll(candlesEntity);
+            repository.saveAll(candlesEntity);
+    }
+
+    @Async("asyncExecutor")
+    public void salvarCandleWebsocket(CandleDTO candleDto, String par, String intervalo) {
+        final var candleEntity = CandleUtils.converterDtoParaEntidade(candleDto, par, intervalo);
+        repository.save(candleEntity);
     }
 
 }

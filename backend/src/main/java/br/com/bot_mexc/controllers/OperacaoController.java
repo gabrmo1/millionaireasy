@@ -49,4 +49,18 @@ public class OperacaoController {
         operacoesService.deletarOperacao(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/start")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Void> iniciarOperacao(@PathVariable String id) {
+        operacoesService.iniciarOperacao(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/stop")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Void> pararOperacao(@PathVariable String id) {
+        operacoesService.pararOperacao(id);
+        return ResponseEntity.ok().build();
+    }
 }
