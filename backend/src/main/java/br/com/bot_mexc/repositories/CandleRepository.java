@@ -34,4 +34,5 @@ public interface CandleRepository extends JpaRepository<Candle, String> {
         return candles;
     }
 
+    boolean existsByParAndIntervaloAndDataFechamento(String par, String intervalo, LocalDateTime localDateTime);
 }

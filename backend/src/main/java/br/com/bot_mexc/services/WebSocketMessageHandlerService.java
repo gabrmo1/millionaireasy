@@ -19,29 +19,13 @@ public class WebSocketMessageHandlerService {
 
     @Async("asyncExecutor")
     public void handleKlineMessage(String klineDataJson, String symbol, String interval) {
-        final var threadName = Thread.currentThread().getName();
-
         try {
-            final var wsRequest = objectMapper.readValue(klineDataJson, MexcKlineEventDTO.class);
-            final var eventoKlineWS = new MexcKlineEventDTO(
-                    symbol,
-                    interval,
-                    wsRequest.windowStart(),
-                    wsRequest.windowEnd(),
-                    wsRequest.open(),
-                    wsRequest.close(),
-                    wsRequest.high(),
-                    wsRequest.low(),
-                    wsRequest.volume(),
-                    wsRequest.amount()
-            );
-
-            final var jsonParaFila = objectMapper.writeValueAsString(eventoKlineWS);
+            final var eventoKlineWS = objectMapper.readValue(klineDataJson, MexcKlineEventDTO.class);
             final var routingKey = String.format("%s.%s.%s", RabbitMQConfig.KLINE_ROUTING_KEY_PREFIX, symbol, interval);
 
-            rabbitTemplate.convertAndSend(RabbitMQConfig.MEXC_DATA_TOPIC, routingKey, jsonParaFila);
+            rabbitTemplate.convertAndSend(RabbitMQConfig.MEXC_DATA_TOPIC, routingKey, eventoKlineWS);
         } catch (Exception e) {
-            log.error("+++ [ASYNC_HANDLER] Falha ao processar/publicar K-line (Thread: {}): {}", threadName, e.getMessage(), e);
+            log.error("+++ [ASYNC_HANDLER] Falha ao processar/publicar K-line: {}", e.getMessage(), e);
         }
     }
 }
