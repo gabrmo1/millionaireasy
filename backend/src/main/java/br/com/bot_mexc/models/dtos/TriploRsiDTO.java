@@ -4,14 +4,11 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record TriploRsiDTO(
-
         BigDecimal rsiCurto,
-
         BigDecimal rsiMedio,
-
         BigDecimal rsiLongo,
-
-        List<BigDecimal> rsiMedioSerie
-
+        List<BigDecimal> serieRsiMedio,
+        BigDecimal mediaGanhoFinal,
+        BigDecimal mediaPerdaFinal
 ) {
 }

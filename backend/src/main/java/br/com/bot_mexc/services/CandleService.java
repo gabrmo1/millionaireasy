@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -32,34 +33,10 @@ public class CandleService {
 
         if (optionalUltimoCandle.isPresent()) {
             final var ultimoCandle = optionalUltimoCandle.get();
-
-            if (candlesDto.size() >= 2) {
-                final var penultimoCandleDTO = candlesDto.get(candlesDto.size() - 2);
-                final var penultimoCandleOptional = repository.findByParAndIntervaloAndDataFechamento(par, intervalo, penultimoCandleDTO.closeTime());
-
-                candlesDto.stream()
-                        .filter(c -> c.closeTime().equals(ultimoCandle.getDataFechamento()))
-                        .findFirst()
-                        .ifPresent(candleAberto -> {
-                            ultimoCandle.setVolume(candleAberto.volume());
-                            repository.save(ultimoCandle);
-                        });
-
-                if (penultimoCandleOptional.isPresent()) {
-                    final var penultimoCandle = penultimoCandleOptional.get();
-
-                    if (!penultimoCandle.getVolume().equals(penultimoCandleDTO.volume())) {
-                        penultimoCandle.setVolume(penultimoCandleDTO.volume());
-                        repository.save(penultimoCandle);
-                    }
-                }
-            }
-
             candlesEntity = candlesDto.stream()
                     .filter(c -> c.closeTime().isAfter(ultimoCandle.getDataFechamento()))
                     .map(c -> CandleUtils.converterDtoParaEntidade(c, par, intervalo))
                     .toList();
-
         } else {
             candlesEntity = candlesDto.stream()
                     .map(c -> CandleUtils.converterDtoParaEntidade(c, par, intervalo))
@@ -70,31 +47,36 @@ public class CandleService {
             repository.saveAll(candlesEntity);
     }
 
-    @Async("asyncExecutor")
-    public void salvarCandleWebsocket(CandleDTO novoCandle, String par, String intervalo) {
+    public Optional<CandleDTO> processarCandleWebsocket(CandleDTO novoCandle, String par, String intervalo) {
         final var key = CURRENT_CANDLE_PREFIX + par + ":" + intervalo;
 
         try {
             final var cachedObj = redisTemplate.opsForValue().get(key);
             CandleDTO candleCacheado = null;
 
-            if (cachedObj != null) {
+            if (cachedObj != null)
                 candleCacheado = objectMapper.convertValue(cachedObj, CandleDTO.class);
-            }
 
             if (candleCacheado != null && novoCandle.closeTime().isAfter(candleCacheado.closeTime())) {
-                log.debug("Fechamento de candle detectado para {}/{}. Persistindo no banco.", par, intervalo);
+                log.debug("Turnover: Persistindo candle fechado {} para {}/{}.", candleCacheado.closeTime(), par, intervalo);
+
                 salvarNoBancoDireto(candleCacheado, par, intervalo);
+                redisTemplate.opsForValue().set(key, novoCandle, 60, TimeUnit.MINUTES);
+                return Optional.of(candleCacheado);
             }
 
             redisTemplate.opsForValue().set(key, novoCandle, 60, TimeUnit.MINUTES);
 
+            return Optional.empty();
+
         } catch (Exception e) {
-            log.error("Erro no processamento do candle via Redis (Write-Behind): {}", e.getMessage());
+            log.error("Erro no processamento do candle via Redis: {}", e.getMessage());
+            return Optional.empty();
         }
     }
 
-    private void salvarNoBancoDireto(CandleDTO dto, String par, String intervalo) {
+    @Async("asyncExecutor")
+    public void salvarNoBancoDireto(CandleDTO dto, String par, String intervalo) {
         try {
             if (!repository.existsByParAndIntervaloAndDataFechamento(par, intervalo, dto.closeTime()))
                 repository.save(CandleUtils.converterDtoParaEntidade(dto, par, intervalo));

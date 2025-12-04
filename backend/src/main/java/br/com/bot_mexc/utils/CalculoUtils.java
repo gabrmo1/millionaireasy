@@ -15,7 +15,8 @@ import java.util.List;
 public class CalculoUtils {
 
     public static BigDecimal calcularEma(List<BigDecimal> precos, int periodo) {
-        if (precos.size() < periodo) return BigDecimal.ZERO;
+        if (precos.size() < periodo)
+            return BigDecimal.ZERO;
 
         final var multiplicador = BigDecimal.valueOf(2).divide(BigDecimal.valueOf(periodo + 1), 8, RoundingMode.HALF_UP);
         final var precosRecentes = precos.subList(precos.size() - periodo, precos.size());
@@ -29,10 +30,45 @@ public class CalculoUtils {
         return ema;
     }
 
+    public static BigDecimal calcularEmaIncremental(BigDecimal precoAtual, BigDecimal emaAnterior, int periodo) {
+        if (emaAnterior == null)
+            return precoAtual;
+
+        final var multiplicador = BigDecimal.valueOf(2).divide(BigDecimal.valueOf(periodo + 1), 8, RoundingMode.HALF_UP);
+
+        return precoAtual.subtract(emaAnterior)
+                .multiply(multiplicador)
+                .add(emaAnterior)
+                .setScale(8, RoundingMode.HALF_UP);
+    }
+
+    public static BigDecimal calcularRsiIncremental(BigDecimal precoAtual, BigDecimal precoAnterior,
+                                                    BigDecimal mediaGanhoAnt, BigDecimal mediaPerdaAnt, int periodo) {
+        var variacao = precoAtual.subtract(precoAnterior);
+        var ganho = variacao.compareTo(BigDecimal.ZERO) > 0 ? variacao : BigDecimal.ZERO;
+        var perda = variacao.compareTo(BigDecimal.ZERO) < 0 ? variacao.abs() : BigDecimal.ZERO;
+
+        var novaMediaGanho = mediaGanhoAnt.multiply(BigDecimal.valueOf(periodo - 1))
+                .add(ganho)
+                .divide(BigDecimal.valueOf(periodo), 8, RoundingMode.HALF_UP);
+
+        var novaMediaPerda = mediaPerdaAnt.multiply(BigDecimal.valueOf(periodo - 1))
+                .add(perda)
+                .divide(BigDecimal.valueOf(periodo), 8, RoundingMode.HALF_UP);
+
+        return calculateRsiFromAverages(novaMediaGanho, novaMediaPerda);
+    }
+
+    public static BigDecimal calcularSmaIncremental(BigDecimal precoAtual, BigDecimal somaAnterior,
+                                                    BigDecimal precoMaisAntigoRemovido, int periodo) {
+        var novaSoma = somaAnterior.subtract(precoMaisAntigoRemovido).add(precoAtual);
+        return novaSoma.divide(BigDecimal.valueOf(periodo), 4, RoundingMode.HALF_UP);
+    }
+
     public static BigDecimal calcularSma(List<BigDecimal> precos, int periodo) {
-        if (precos.size() < periodo) {
+        if (precos.size() < periodo)
             return BigDecimal.ZERO;
-        }
+
         final var ultimosPrecos = precos.subList(precos.size() - periodo, precos.size());
         final var soma = ultimosPrecos.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -115,15 +151,22 @@ public class CalculoUtils {
         var rsiMedio = calculateRsiFromAverages(mediaGanhosMedio, mediaPerdasMedio);
         var rsiLongo = calculateRsiFromAverages(mediaGanhosLongo, mediaPerdasLongo);
 
-        return new TriploRsiDTO(rsiCurto, rsiMedio, rsiLongo, rsiMedioSerie);
+        return new TriploRsiDTO(
+                rsiCurto,
+                rsiMedio,
+                rsiLongo,
+                rsiMedioSerie,
+                mediaGanhosLongo,
+                mediaPerdasLongo
+        );
     }
 
-    private static BigDecimal calcularMediaGanhoRsi(BigDecimal mediaGanhos, int qntPeriodos, BigDecimal ganho) {
+    public static BigDecimal calcularMediaGanhoRsi(BigDecimal mediaGanhos, int qntPeriodos, BigDecimal ganho) {
         return (mediaGanhos.multiply(BigDecimal.valueOf(qntPeriodos - 1)).add(ganho))
                 .divide(BigDecimal.valueOf(qntPeriodos), 4, RoundingMode.HALF_UP);
     }
 
-    private static BigDecimal calcularMediaPerdaRsi(BigDecimal mediaPerdas, int qntPeriodos, BigDecimal perda) {
+    public static BigDecimal calcularMediaPerdaRsi(BigDecimal mediaPerdas, int qntPeriodos, BigDecimal perda) {
         return (mediaPerdas.multiply(BigDecimal.valueOf(qntPeriodos - 1)).add(perda))
                 .divide(BigDecimal.valueOf(qntPeriodos), 4, RoundingMode.HALF_UP);
     }
@@ -153,7 +196,7 @@ public class CalculoUtils {
         return new ResultadoRsiEstocasticoDTO(ultimoK, penultimoK, ultimoD, penultimoD);
     }
 
-    private static BigDecimal calculateRsiFromAverages(BigDecimal avgGanhos, BigDecimal avgPerdas) {
+    public static BigDecimal calculateRsiFromAverages(BigDecimal avgGanhos, BigDecimal avgPerdas) {
         if (avgPerdas.compareTo(BigDecimal.ZERO) == 0)
             return BigDecimal.valueOf(100);
 
