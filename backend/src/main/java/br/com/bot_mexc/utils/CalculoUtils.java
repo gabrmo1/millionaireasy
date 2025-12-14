@@ -100,7 +100,7 @@ public class CalculoUtils {
         var rsiMedioSerie = new ArrayList<BigDecimal>();
 
         for (int i = 1; i <= qntPeriodosRsiLongo; i++) {
-            var variacao = candles.get(i).closeValue().subtract(candles.get(i - 1).closeValue());
+            var variacao = candles.get(i).valorFechamento().subtract(candles.get(i - 1).valorFechamento());
 
             if (variacao.compareTo(BigDecimal.ZERO) > 0) {
                 if (i <= qntPeriodosRsiCurto)
@@ -131,7 +131,7 @@ public class CalculoUtils {
         rsiMedioSerie.add(calculateRsiFromAverages(mediaGanhosMedio, mediaPerdasMedio));
 
         for (int i = qntPeriodosRsiLongo + 1; i < candles.size(); i++) {
-            var variacao = candles.get(i).closeValue().subtract(candles.get(i - 1).closeValue());
+            var variacao = candles.get(i).valorFechamento().subtract(candles.get(i - 1).valorFechamento());
             var ganho = variacao.compareTo(BigDecimal.ZERO) > 0 ? variacao : BigDecimal.ZERO;
             var perda = variacao.compareTo(BigDecimal.ZERO) < 0 ? variacao.abs() : BigDecimal.ZERO;
 

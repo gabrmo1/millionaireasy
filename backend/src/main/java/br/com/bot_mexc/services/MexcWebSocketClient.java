@@ -1,7 +1,7 @@
 package br.com.bot_mexc.services;
 
 import br.com.bot_mexc.configs.RabbitMQConfig;
-import br.com.bot_mexc.models.dtos.mexc.MexcKlineEventDTO;
+import br.com.bot_mexc.models.dtos.mexc.EventoCandleMexcDTO;
 import br.com.bot_mexc.proto.PublicSpotKlineV3Api;
 import br.com.bot_mexc.proto.PushDataV3ApiWrapper;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -128,8 +128,8 @@ public class MexcWebSocketClient {
         }
     }
 
-    private MexcKlineEventDTO mapProtoToDto(PublicSpotKlineV3Api proto, String symbol) {
-        return new MexcKlineEventDTO(
+    private EventoCandleMexcDTO mapProtoToDto(PublicSpotKlineV3Api proto, String symbol) {
+        return new EventoCandleMexcDTO(
                 symbol,
                 proto.getInterval(),
                 proto.getWindowStart(),
@@ -145,7 +145,7 @@ public class MexcWebSocketClient {
 
     private void handleClose(CloseReason reason) {
         this.session = null;
-        log.warn("WS Fechado. Reconectando...");
+        log.warn("WS Fechado. Reconectando... \n{}", reason);
         connect();
     }
 

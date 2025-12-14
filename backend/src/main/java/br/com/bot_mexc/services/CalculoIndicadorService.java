@@ -23,14 +23,14 @@ public class CalculoIndicadorService {
     private final IndicadorStateService stateService;
 
     public Map<String, BigDecimal> calcularIndicadoresOtimizado(String par, String intervalo, CandleDTO candleAtual, Set<IndicadorConfig> configs) {
-        final var baseState = stateService.getOrInitializeState(par, intervalo, configs, candleAtual.openTime());
+        final var baseState = stateService.getOrInitializeState(par, intervalo, configs, candleAtual.dataAbertura());
 
         if (baseState == null) {
             return Collections.emptyMap();
         }
 
         final var resultados = new HashMap<String, BigDecimal>();
-        resultados.put("PRECO_FECHAMENTO", candleAtual.closeValue());
+        resultados.put("PRECO_FECHAMENTO", candleAtual.valorFechamento());
 
         final var calculosRealizadosNesteTick = new HashMap<String, BigDecimal>();
 
@@ -54,12 +54,12 @@ public class CalculoIndicadorService {
                 final var valorCalculado = switch (config.getTipoIndicador()) {
                     case EMA -> {
                         int pEma = params.getOrDefault("periodoEma", 200);
-                        yield CalculoUtils.calcularEmaIncremental(candleAtual.closeValue(), itemState.valor(), pEma);
+                        yield CalculoUtils.calcularEmaIncremental(candleAtual.valorFechamento(), itemState.valor(), pEma);
                     }
                     case RSI_CURTO, RSI_MEDIO, RSI_LONGO -> {
                         int pRsi = getPeriodoRsi(config, params);
                         yield CalculoUtils.calcularRsiIncremental(
-                                candleAtual.closeValue(),
+                                candleAtual.valorFechamento(),
                                 baseState.ultimoPrecoFechamento(),
                                 itemState.avgGain(),
                                 itemState.avgLoss(),

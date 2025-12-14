@@ -6,37 +6,36 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record MexcKlineEventDTO(
+public record EventoCandleMexcDTO(
 
         @JsonProperty("symbol")
-        String symbol,
+        String par,
 
         @JsonProperty("interval")
-        String interval,
+        String intervalo,
 
         @JsonProperty("windowStart")
-        Long windowStart,
+        Long inicioJanela,
 
         @JsonProperty("windowEnd")
-        Long windowEnd,
+        Long fimJanela,
 
         @JsonProperty("openingPrice")
-        BigDecimal open,
+        BigDecimal precoAbertura,
 
         @JsonProperty("closingPrice")
-        BigDecimal close,
+        BigDecimal precoFechamento,
 
         @JsonProperty("highestPrice")
-        BigDecimal high,
+        BigDecimal maxima,
 
         @JsonProperty("lowestPrice")
-        BigDecimal low,
+        BigDecimal minima,
 
         @JsonProperty("volume")
         BigDecimal volume,
 
         @JsonProperty("amount")
-        BigDecimal amount
-
+        BigDecimal valorTotal
 ) {
 }

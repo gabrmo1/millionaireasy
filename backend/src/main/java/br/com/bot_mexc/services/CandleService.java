@@ -24,7 +24,7 @@ public class CandleService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final String CURRENT_CANDLE_PREFIX = "mexc:candle:current:";
+    private static final String PREFIXO_CANDLE_ATUAL = "mexc:candle:current:";
 
     @Async("asyncExecutor")
     public void salvarCandlesAsync(List<CandleDTO> candlesDto, String par, String intervalo) {
@@ -34,7 +34,7 @@ public class CandleService {
         if (optionalUltimoCandle.isPresent()) {
             final var ultimoCandle = optionalUltimoCandle.get();
             candlesEntity = candlesDto.stream()
-                    .filter(c -> c.closeTime().isAfter(ultimoCandle.getDataFechamento()))
+                    .filter(c -> c.dataFechamento().isAfter(ultimoCandle.getDataFechamento()))
                     .map(c -> CandleUtils.converterDtoParaEntidade(c, par, intervalo))
                     .toList();
         } else {
@@ -47,8 +47,14 @@ public class CandleService {
             repository.saveAll(candlesEntity);
     }
 
-    public Optional<CandleDTO> processarCandleWebsocket(CandleDTO novoCandle, String par, String intervalo) {
-        final var key = CURRENT_CANDLE_PREFIX + par + ":" + intervalo;
+    /**
+     * Verifica se houve uma virada de candle comparando o novo candle com o estado em cache.
+     * Atualiza o cache com o candle mais recente.
+     *
+     * @return Optional contendo o CandleDTO FECHADO se houver virada, ou Empty se for apenas atualização de preço.
+     */
+    public Optional<CandleDTO> verificarViradaEAtualizarCache(CandleDTO novoCandle, String par, String intervalo) {
+        final var key = PREFIXO_CANDLE_ATUAL + par + ":" + intervalo;
 
         try {
             final var cachedObj = redisTemplate.opsForValue().get(key);
@@ -57,14 +63,20 @@ public class CandleService {
             if (cachedObj != null)
                 candleCacheado = objectMapper.convertValue(cachedObj, CandleDTO.class);
 
-            if (candleCacheado != null && novoCandle.closeTime().isAfter(candleCacheado.closeTime())) {
-                log.debug("Turnover: Persistindo candle fechado {} para {}/{}.", candleCacheado.closeTime(), par, intervalo);
+            // Se o candle que chegou tem data de fechamento posterior ao que está no cache,
+            // significa que o do cache fechou.
+            if (candleCacheado != null && novoCandle.dataFechamento().isAfter(candleCacheado.dataFechamento())) {
+                log.debug("Turnover detectado: Persistindo candle fechado {} para {}/{}.", candleCacheado.dataFechamento(), par, intervalo);
 
                 salvarNoBancoDireto(candleCacheado, par, intervalo);
+
+                // Atualiza o cache com o novo candle que acabou de abrir
                 redisTemplate.opsForValue().set(key, novoCandle, 60, TimeUnit.MINUTES);
+
                 return Optional.of(candleCacheado);
             }
 
+            // Não houve virada, apenas atualiza o preço atual no cache
             redisTemplate.opsForValue().set(key, novoCandle, 60, TimeUnit.MINUTES);
 
             return Optional.empty();
@@ -78,7 +90,7 @@ public class CandleService {
     @Async("asyncExecutor")
     public void salvarNoBancoDireto(CandleDTO dto, String par, String intervalo) {
         try {
-            if (!repository.existsByParAndIntervaloAndDataFechamento(par, intervalo, dto.closeTime()))
+            if (!repository.existsByParAndIntervaloAndDataFechamento(par, intervalo, dto.dataFechamento()))
                 repository.save(CandleUtils.converterDtoParaEntidade(dto, par, intervalo));
         } catch (Exception e) {
             log.error("Falha ao salvar candle fechado no banco: {}", e.getMessage());

@@ -55,13 +55,13 @@ public class IndicadorStateService {
     }
 
     public void advanceState(String par, String intervalo, Set<IndicadorConfig> configs, CandleDTO closedCandle) {
-        final var currentState = getOrInitializeState(par, intervalo, configs, closedCandle.closeTime());
+        final var currentState = getOrInitializeState(par, intervalo, configs, closedCandle.dataFechamento());
 
-        if (currentState.ultimaDataFechamento().equals(closedCandle.closeTime()))
+        if (currentState.ultimaDataFechamento().equals(closedCandle.dataFechamento()))
             return;
 
         final var novosEstados = new HashMap<>(currentState.estados());
-        updatePriceHistory(par, intervalo, closedCandle.closeValue());
+        updatePriceHistory(par, intervalo, closedCandle.valorFechamento());
 
         var chavesProcessadasNestaRodada = new HashSet<String>();
 
@@ -83,14 +83,14 @@ public class IndicadorStateService {
                 switch (config.getTipoIndicador()) {
                     case EMA:
                         final var pEma = params.getOrDefault("periodoEma", 200);
-                        final var novaEma = CalculoUtils.calcularEmaIncremental(closedCandle.closeValue(), estadoAnt.valor(), pEma);
+                        final var novaEma = CalculoUtils.calcularEmaIncremental(closedCandle.valorFechamento(), estadoAnt.valor(), pEma);
                         novoItem = new EstadoIndicadoresDTO.EstadoIndicadorItem(novaEma, null, null, null);
                         break;
                     case RSI_CURTO:
                     case RSI_MEDIO:
                     case RSI_LONGO:
                         final var pRsi = getPeriodoRsi(config, params);
-                        final var variacao = closedCandle.closeValue().subtract(currentState.ultimoPrecoFechamento());
+                        final var variacao = closedCandle.valorFechamento().subtract(currentState.ultimoPrecoFechamento());
                         final var ganho = variacao.compareTo(BigDecimal.ZERO) > 0 ? variacao : BigDecimal.ZERO;
                         final var perda = variacao.compareTo(BigDecimal.ZERO) < 0 ? variacao.abs() : BigDecimal.ZERO;
 
@@ -112,8 +112,8 @@ public class IndicadorStateService {
         }
 
         final var newState = new EstadoIndicadoresDTO(
-                closedCandle.closeTime(),
-                closedCandle.closeValue(),
+                closedCandle.dataFechamento(),
+                closedCandle.valorFechamento(),
                 novosEstados
         );
 
@@ -138,7 +138,7 @@ public class IndicadorStateService {
         final var historyKey = HISTORY_KEY_PREFIX + par + ":" + intervalo;
         redisTemplate.delete(historyKey);
 
-        final var prices = history.stream().map(CandleDTO::closeValue).toList();
+        final var prices = history.stream().map(CandleDTO::valorFechamento).toList();
         redisTemplate.opsForList().rightPushAll(historyKey, prices.toArray());
 
         for (IndicadorConfig config : configs) {
@@ -170,8 +170,8 @@ public class IndicadorStateService {
         }
 
         final var state = new EstadoIndicadoresDTO(
-                lastCandle.closeTime(),
-                lastCandle.closeValue(),
+                lastCandle.dataFechamento(),
+                lastCandle.valorFechamento(),
                 estados
         );
 

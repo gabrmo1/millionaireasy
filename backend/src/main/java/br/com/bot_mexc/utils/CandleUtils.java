@@ -37,29 +37,29 @@ public class CandleUtils {
         return candles;
     }
 
-    public static Candle converterDtoParaEntidade(CandleDTO c, String par, String intervalo) {
+    public static Candle converterDtoParaEntidade(CandleDTO dto, String par, String intervalo) {
         return Candle.builder()
                 .par(par)
                 .intervalo(intervalo)
-                .dataAbertura(c.openTime())
-                .dataFechamento(c.closeTime())
-                .minima(c.low())
-                .maxima(c.high())
-                .valorAbertura(c.openValue())
-                .valorFechamento(c.closeValue())
-                .volume(c.volume())
+                .dataAbertura(dto.dataAbertura())
+                .dataFechamento(dto.dataFechamento())
+                .minima(dto.minima())
+                .maxima(dto.maxima())
+                .valorAbertura(dto.valorAbertura())
+                .valorFechamento(dto.valorFechamento())
+                .volume(dto.volume())
                 .build();
     }
 
-    public static CandleDTO converterEntidadeParaDto(Candle c) {
+    public static CandleDTO converterEntidadeParaDto(Candle entidade) {
         return new CandleDTO(
-                c.getDataAbertura(),
-                c.getDataFechamento(),
-                c.getValorAbertura(),
-                c.getValorFechamento(),
-                c.getMinima(),
-                c.getMaxima(),
-                c.getVolume()
+                entidade.getDataAbertura(),
+                entidade.getDataFechamento(),
+                entidade.getValorAbertura(),
+                entidade.getValorFechamento(),
+                entidade.getMinima(),
+                entidade.getMaxima(),
+                entidade.getVolume()
         );
     }
 
@@ -69,5 +69,4 @@ public class CandleUtils {
                 .distinct()
                 .toList();
     }
-
 }
