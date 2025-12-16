@@ -1,8 +1,10 @@
 package br.com.bot_mexc.models.dtos;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
 
 public record CriarOperacaoDTO(
 
@@ -14,13 +16,14 @@ public record CriarOperacaoDTO(
         @Size(max = 5)
         String intervalo,
 
-        @NotEmpty
-        @NotBlank
         String idOperador,
 
-//        @NotEmpty
-//        @NotBlank
-        String idEstrategia
+        String idEstrategia,
+
+        Boolean modoTeste,
+
+        @Positive
+        BigDecimal saldoInicial
 
 ) {
 }

@@ -104,13 +104,13 @@ public class KlineAnalysisConsumer {
             boolean sinalCompra = avaliacaoCondicaoService.avaliarCondicoesCompra(operacao.condicoesCompra(), indicadores);
 
             if (sinalCompra) {
-                gestaoOrdemService.registrarIntencaoDeCompra(operacao.id(), operacao.par(), candle.valorFechamento());
+                gestaoOrdemService.registrarIntencaoDeCompra(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento());
                 return;
             }
 
             boolean sinalVenda = avaliacaoCondicaoService.avaliarCondicoesVenda(operacao.condicoesVenda(), indicadores);
             if (sinalVenda) {
-                gestaoOrdemService.registrarIntencaoDeVenda(operacao.id(), operacao.par(), candle.valorFechamento());
+                gestaoOrdemService.registrarIntencaoDeVenda(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento());
             }
         });
     }

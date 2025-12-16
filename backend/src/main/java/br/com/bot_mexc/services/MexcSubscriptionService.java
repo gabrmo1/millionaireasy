@@ -5,9 +5,11 @@ import br.com.bot_mexc.models.enums.StatusOperacoes;
 import br.com.bot_mexc.repositories.OperacaoRepository;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,16 +23,23 @@ public class MexcSubscriptionService {
 
     private final HashOperations<String, String, String> hashOperations;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final MexcWebSocketClient webSocketClient;
+    private final MexcConnectionManager connectionManager;
     private final OperacaoRepository operacaoRepository;
 
-    public MexcSubscriptionService(@Lazy MexcWebSocketClient webSocketClient,
+    public MexcSubscriptionService(MexcConnectionManager connectionManager,
                                    RedisTemplate<String, Object> redisTemplate,
                                    OperacaoRepository operacaoRepository) {
-        this.webSocketClient = webSocketClient;
+        this.connectionManager = connectionManager;
         this.redisTemplate = redisTemplate;
         this.hashOperations = redisTemplate.opsForHash();
         this.operacaoRepository = operacaoRepository;
+    }
+
+    @Async("asyncExecutor")
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        log.info("Aplicação iniciada. Sincronizando inscrições WebSocket...");
+        resyncSubscriptionsFromDatabase();
     }
 
     public void addSubscription(String par, String intervalo) {
@@ -40,8 +49,8 @@ public class MexcSubscriptionService {
             log.info("Contagem de referência para o canal {} aumentada para {}", nomeCanal, contagem);
 
             if (contagem == 1) {
-                log.info("Primeira inscrição detectada. Solicitando subscrição no WebSocket para {}", nomeCanal);
-                webSocketClient.subscribe(nomeCanal);
+                log.info("Primeira inscrição detectada. Solicitando subscrição no Pool WebSocket para {}", nomeCanal);
+                connectionManager.subscribe(nomeCanal);
             }
         } catch (Exception e) {
             log.error("Falha ao incrementar/subscrever canal {} no Redis", nomeCanal, e);
@@ -61,8 +70,8 @@ public class MexcSubscriptionService {
             log.info("Contagem de referência para o canal {} reduzida para {}", nomeCanal, contagem);
 
             if (contagem <= 0) {
-                log.info("Última inscrição removida. Solicitando un-subscrição no WebSocket para {}", nomeCanal);
-                webSocketClient.unsubscribe(nomeCanal);
+                log.info("Última inscrição removida. Solicitando un-subscrição no Pool WebSocket para {}", nomeCanal);
+                connectionManager.unsubscribe(nomeCanal);
                 hashOperations.delete(REDIS_HASH_KEY, nomeCanal);
             }
         } catch (Exception e) {
@@ -111,7 +120,7 @@ public class MexcSubscriptionService {
             throw new ValidationException("O intervalo não pode ser nulo ou vazio.");
         }
 
-        return switch (intervaloInterno.toLowerCase()) {
+        return switch (intervaloInterno) {
             case "1m" -> "Min1";
             case "5m" -> "Min5";
             case "15m" -> "Min15";
@@ -124,8 +133,7 @@ public class MexcSubscriptionService {
             case "1mês", "1M" -> "Month1";
             case "min1", "min5", "min15", "min30", "min60", "hour4", "hour8", "day1", "week1", "month1" ->
                     intervaloInterno;
-            default ->
-                    throw new ValidationException("Intervalo '" + intervaloInterno + "' não é suportado. Use um formato como '15m', '1h', '4h', '1d'.");
+            default -> throw new ValidationException("Intervalo '" + intervaloInterno + "' não é suportado.");
         };
     }
 }

@@ -6,100 +6,149 @@ import br.com.bot_mexc.proto.PublicSpotKlineV3Api;
 import br.com.bot_mexc.proto.PushDataV3ApiWrapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import jakarta.websocket.*;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
-@Component
-public class MexcWebSocketClient {
-
-    @Value("${mexc.websocket.url}")
-    private String websocketUrl;
+public class MexcWebSocketClient extends Endpoint {
 
     private final RabbitTemplate rabbitTemplate;
-    private final MexcSubscriptionService subscriptionService;
+    private final String websocketUrl;
     private final WebSocketContainer container;
 
-    private volatile boolean isConnecting = false;
-    private int connectionAttempts = 0;
+    @Getter
+    private final String id;
+
     private Session session;
+    private final AtomicInteger subscriptionCount = new AtomicInteger(0);
+    private final Set<String> activeChannels = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final ConcurrentLinkedQueue<String> pendingSubscriptions = new ConcurrentLinkedQueue<>();
 
-    public MexcWebSocketClient(@Lazy MexcSubscriptionService subscriptionService,
-                               RabbitTemplate rabbitTemplate,
-                               @Value("${mexc.websocket.url}") String websocketUrl) {
-        this.container = ContainerProvider.getWebSocketContainer();
-        this.rabbitTemplate = rabbitTemplate;
-        this.subscriptionService = subscriptionService;
+    public static final int MAX_SUBSCRIPTIONS = 20;
+
+    public MexcWebSocketClient(String id, String websocketUrl, RabbitTemplate rabbitTemplate) {
+        this.id = id;
         this.websocketUrl = websocketUrl;
+        this.rabbitTemplate = rabbitTemplate;
+        this.container = ContainerProvider.getWebSocketContainer();
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationEvent() {
-        log.info("Aplicação pronta. Iniciando conexão WebSocket...");
-        this.connect();
-    }
-
-    @Async("asyncExecutor")
     public void connect() {
-        if (isOpen() || isConnecting)
-            return;
-
-        isConnecting = true;
-        connectionAttempts++;
-        log.info("Tentando conectar ao WebSocket... (Tentativa {})", connectionAttempts);
-
         try {
-            final var config = ClientEndpointConfig.Builder.create().build();
-            final var endpointInstance = new Endpoint() {
-
-                @Override
-                public void onOpen(Session session, EndpointConfig config) {
-                    MexcWebSocketClient.this.session = session;
-                    MexcWebSocketClient.this.isConnecting = false;
-                    MexcWebSocketClient.this.connectionAttempts = 0;
-                    log.info("WebSocket conectado: {}", session.getId());
-
-                    session.addMessageHandler(new MessageHandler.Whole<ByteBuffer>() {
-                        @Override
-                        public void onMessage(ByteBuffer message) {
-                            MexcWebSocketClient.this.handleBinaryMessage(message);
-                        }
-                    });
-
-                    try {
-                        subscriptionService.resyncSubscriptionsFromDatabase();
-                    } catch (Exception e) {
-                        log.error("Erro ao ressincronizar subscrições", e);
-                    }
-                }
-
-                @Override
-                public void onClose(Session session, CloseReason closeReason) {
-                    MexcWebSocketClient.this.handleClose(closeReason);
-                }
-
-                @Override
-                public void onError(Session session, Throwable throwable) {
-                    MexcWebSocketClient.this.handleError(throwable);
-                }
-            };
-            container.connectToServer(endpointInstance, config, URI.create(websocketUrl));
+            log.info("[WSClient-{}] Conectando a {}...", id, websocketUrl);
+            ClientEndpointConfig config = ClientEndpointConfig.Builder.create().build();
+            this.container.connectToServer(this, config, URI.create(websocketUrl));
         } catch (Exception e) {
-            log.error("Falha na conexão WS: {}", e.getMessage());
-            isConnecting = false;
+            log.error("[WSClient-{}] Falha na conexão: {}", id, e.getMessage());
+        }
+    }
+
+    @Override
+    public void onOpen(Session session, EndpointConfig config) {
+        this.session = session;
+        log.info("[WSClient-{}] Conectado. ID Sessão: {}", id, session.getId());
+
+        session.addMessageHandler((MessageHandler.Whole<ByteBuffer>) this::handleBinaryMessage);
+
+        processPendingSubscriptions();
+    }
+
+    @Override
+    public void onClose(Session session, CloseReason closeReason) {
+        this.session = null;
+        log.warn("[WSClient-{}] Conexão fechada: {}", id, closeReason);
+        pendingSubscriptions.addAll(activeChannels);
+        activeChannels.clear();
+        subscriptionCount.set(0);
+
+        new Thread(() -> {
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException ignored) {
+            }
+            connect();
+        }).start();
+    }
+
+    @Override
+    public void onError(Session session, Throwable throwable) {
+        log.error("[WSClient-{}] Erro: ", id, throwable);
+    }
+
+    public void subscribe(String channel) {
+        if (activeChannels.contains(channel) || pendingSubscriptions.contains(channel)) {
+            return;
+        }
+
+        subscriptionCount.incrementAndGet();
+        pendingSubscriptions.add(channel);
+        processPendingSubscriptions();
+    }
+
+    public void unsubscribe(String channel) {
+        if (isOpen()) {
+            try {
+                session.getBasicRemote().sendText(String.format("{\"method\":\"UNSUBSCRIPTION\",\"params\":[\"%s\"]}", channel));
+                activeChannels.remove(channel);
+                subscriptionCount.decrementAndGet();
+            } catch (IOException e) {
+                log.error("[WSClient-{}] Erro unsubscribe", id, e);
+            }
+        } else {
+            pendingSubscriptions.remove(channel);
+            activeChannels.remove(channel);
+            subscriptionCount.decrementAndGet();
+        }
+    }
+
+    public boolean isFull() {
+        return subscriptionCount.get() >= MAX_SUBSCRIPTIONS;
+    }
+
+    public boolean hasChannel(String channel) {
+        return activeChannels.contains(channel) || pendingSubscriptions.contains(channel);
+    }
+
+    public void sendPing() {
+        if (isOpen()) {
+            try {
+                session.getBasicRemote().sendText("{\"method\":\"PING\"}");
+            } catch (IOException e) {
+                log.debug("[WSClient-{}] Erro ao enviar PING", id);
+            }
+        }
+    }
+
+    private boolean isOpen() {
+        return this.session != null && this.session.isOpen();
+    }
+
+    private void processPendingSubscriptions() {
+        if (!isOpen()) return;
+
+        String channel;
+        while ((channel = pendingSubscriptions.poll()) != null) {
+            try {
+                session.getBasicRemote().sendText(String.format("{\"method\":\"SUBSCRIPTION\",\"params\":[\"%s\"]}", channel));
+                activeChannels.add(channel);
+                log.info("[WSClient-{}] Inscrito no canal: {}", id, channel);
+            } catch (IOException e) {
+                log.error("[WSClient-{}] Erro ao inscrever no canal {}", id, channel, e);
+                pendingSubscriptions.add(channel);
+                return;
+            }
         }
     }
 
@@ -124,7 +173,7 @@ public class MexcWebSocketClient {
             });
 
         } catch (InvalidProtocolBufferException e) {
-            log.error("Erro protobuf: {}", e.getMessage());
+            log.error("[WSClient-{}] Erro protobuf: {}", id, e.getMessage());
         }
     }
 
@@ -141,49 +190,5 @@ public class MexcWebSocketClient {
                 new BigDecimal(proto.getVolume()),
                 new BigDecimal(proto.getAmount())
         );
-    }
-
-    private void handleClose(CloseReason reason) {
-        this.session = null;
-        log.warn("WS Fechado. Reconectando... \n{}", reason);
-        connect();
-    }
-
-    private void handleError(Throwable t) {
-        log.error("WS Error", t);
-    }
-
-    public void subscribe(String channel) {
-        if (isOpen()) {
-            try {
-                session.getBasicRemote().sendText(String.format("{\"method\":\"SUBSCRIPTION\",\"params\":[\"%s\"]}", channel));
-            } catch (IOException e) {
-                log.error("Erro subscribe", e);
-            }
-        }
-    }
-
-    public void unsubscribe(String channel) {
-        if (isOpen()) {
-            try {
-                session.getBasicRemote().sendText(String.format("{\"method\":\"UNSUBSCRIPTION\",\"params\":[\"%s\"]}", channel));
-            } catch (IOException e) {
-                log.error("Erro unsubscribe", e);
-            }
-        }
-    }
-
-    public boolean isOpen() {
-        return this.session != null && this.session.isOpen();
-    }
-
-    @Scheduled(fixedRate = 20000)
-    public void sendPing() {
-        if (isOpen()) {
-            try {
-                session.getBasicRemote().sendText("{\"method\":\"PING\"}");
-            } catch (IOException e) {
-            }
-        }
     }
 }

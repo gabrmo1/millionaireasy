@@ -17,6 +17,8 @@ public class OperacaoBuilder {
                 .status(StatusOperacoes.PARADO)
                 .par(request.par())
                 .intervalo(request.intervalo())
+                .modoTeste(Boolean.TRUE.equals(request.modoTeste()))
+                .saldoInicial(request.saldoInicial())
                 .build();
     }
 

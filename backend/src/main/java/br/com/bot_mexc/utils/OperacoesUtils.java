@@ -12,7 +12,9 @@ public class OperacoesUtils {
 
     public static OperacaoDTO converterEntidadeParaDto(Operacao operacao) {
         final var estrategiaDto = EstrategiaUtils.converterEntidadeParaDto(operacao.getEstrategia());
-        final var operadorDto = OperadorUtils.converterEntidadeParaDto(operacao.getOperador());
+        final var operadorDto = operacao.getOperador() != null
+                ? OperadorUtils.converterEntidadeParaDto(operacao.getOperador())
+                : null;
 
         return OperacaoDTO.builder()
                 .id(operacao.getId())
@@ -24,6 +26,8 @@ public class OperacoesUtils {
                 .dataInicio(operacao.getDataInicio())
                 .dataFim(operacao.getDataFim())
                 .operador(operadorDto)
+                .modoTeste(operacao.getModoTeste())
+                .saldoInicial(operacao.getSaldoInicial())
                 .build();
     }
 

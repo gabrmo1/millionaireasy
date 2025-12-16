@@ -3,6 +3,7 @@ package br.com.bot_mexc.models.dtos;
 import br.com.bot_mexc.models.enums.StatusOperacoes;
 import lombok.Builder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Builder
@@ -15,6 +16,8 @@ public record OperacaoDTO(
         String par,
         String intervalo,
         OperadorDTO operador,
-        EstrategiaDTO estrategia
+        EstrategiaDTO estrategia,
+        Boolean modoTeste,
+        BigDecimal saldoInicial
 ) {
 }

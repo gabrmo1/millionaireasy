@@ -6,6 +6,7 @@ import br.com.bot_mexc.models.dtos.EntidadesOperacaoDTO;
 import br.com.bot_mexc.models.dtos.OperacaoDTO;
 import br.com.bot_mexc.models.entities.Estrategia;
 import br.com.bot_mexc.models.entities.Operacao;
+import br.com.bot_mexc.models.entities.Operador;
 import br.com.bot_mexc.models.enums.StatusOperacoes;
 import br.com.bot_mexc.repositories.EstrategiaRepository;
 import br.com.bot_mexc.repositories.OperacaoRepository;
@@ -62,7 +63,7 @@ public class OperacoesService {
         novaOperacao.setStatus(StatusOperacoes.PARADO);
 
         operacaoRepository.save(novaOperacao);
-        log.info("Operação {} criada com status PARADO.", novaOperacao.getId());
+        log.info("Operação {} criada com status PARADO. Modo Teste: {}", novaOperacao.getId(), novaOperacao.getModoTeste());
     }
 
     @Transactional
@@ -105,6 +106,9 @@ public class OperacoesService {
 
         OperacoesUtils.atualizarEntidadeComDto(operacao, request, entidades.operador(), entidades.estrategia());
 
+        operacao.setModoTeste(Boolean.TRUE.equals(request.modoTeste()));
+        operacao.setSaldoInicial(request.saldoInicial());
+
         operacao.setStatus(StatusOperacoes.PARADO);
         operacao.setDataFim(DateUtils.agora());
 
@@ -136,13 +140,28 @@ public class OperacoesService {
             throw new ValidationException("A operação já está em andamento.");
         if (operacao.getEstrategia() == null)
             throw new ValidationException("Estratégia não definida.");
-        if (operacao.getOperador() == null)
-            throw new ValidationException("Operador não definido.");
+
+        if (!Boolean.TRUE.equals(operacao.getModoTeste()) && operacao.getOperador() == null)
+            throw new ValidationException("Operador não definido para operação real.");
+
+        if (Boolean.TRUE.equals(operacao.getModoTeste()) && operacao.getSaldoInicial() == null)
+            throw new ValidationException("Saldo inicial é obrigatório para operações de teste.");
     }
 
     private EntidadesOperacaoDTO validarEObterEntidades(CriarOperacaoDTO request) {
-        final var operador = operadorRepository.findById(request.idOperador())
-                .orElseThrow(() -> new ValidationException("Operador não encontrado."));
+        Operador operador = null;
+
+        if (!Boolean.TRUE.equals(request.modoTeste())) {
+            if (request.idOperador() == null || request.idOperador().isBlank()) {
+                throw new ValidationException("O Operador é obrigatório para operações reais.");
+            }
+            operador = operadorRepository.findById(request.idOperador())
+                    .orElseThrow(() -> new ValidationException("Operador não encontrado."));
+        } else {
+            if (request.saldoInicial() == null || request.saldoInicial().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new ValidationException("Para operações de teste, informe um Saldo Inicial válido.");
+            }
+        }
 
         Estrategia estrategia = null;
         if (request.idEstrategia() != null && !request.idEstrategia().isBlank())
