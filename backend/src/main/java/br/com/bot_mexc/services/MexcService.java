@@ -38,10 +38,6 @@ public class MexcService {
         return CandleUtils.montarCandles(integration.obterCandles(symbol, interval, limit));
     }
 
-    public BigDecimal consultarValorAtualMoeda(String symbol) {
-        return integration.obterValorAtualMoeda(symbol).price();
-    }
-
     public Page<SymbolInfoDTO> getStablecoinPairsPaginated(String quoteAsset, String searchTerm, Pageable pageable) {
         List<SymbolInfoDTO> allPairs = getStablecoinPairsFromCache();
 
@@ -67,7 +63,6 @@ public class MexcService {
         return new PageImpl<>(pageContent, pageable, filteredPairs.size());
     }
 
-    @SuppressWarnings("unchecked")
     private List<SymbolInfoDTO> getStablecoinPairsFromCache() {
         Object cachedData = redisTemplate.opsForValue().get(STABLECOIN_PAIRS_CACHE_KEY);
         if (cachedData != null) {
