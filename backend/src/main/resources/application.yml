@@ -1,3 +1,7 @@
+mexc:
+  websocket:
+    url: "wss://wbs-api.mexc.com/ws"
+
 spring:
   application:
     name: backend

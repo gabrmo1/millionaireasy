@@ -7,20 +7,12 @@ import java.time.LocalDateTime;
 
 @With
 public record CandleDTO(
-
-        LocalDateTime openTime,
-
-        LocalDateTime closeTime,
-
-        BigDecimal openValue,
-
-        BigDecimal closeValue,
-
-        BigDecimal low,
-
-        BigDecimal high,
-
+        LocalDateTime dataAbertura,
+        LocalDateTime dataFechamento,
+        BigDecimal valorAbertura,
+        BigDecimal valorFechamento,
+        BigDecimal minima,
+        BigDecimal maxima,
         BigDecimal volume
-
 ) {
 }

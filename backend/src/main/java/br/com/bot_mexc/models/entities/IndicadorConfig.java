@@ -1,6 +1,7 @@
 package br.com.bot_mexc.models.entities;
 
 import br.com.bot_mexc.models.enums.TipoIndicador;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -18,6 +19,7 @@ public class IndicadorConfig extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_estrategia", nullable = false)
+    @JsonIgnore
     private Estrategia estrategia;
 
     @Column(name = "alias", nullable = false)

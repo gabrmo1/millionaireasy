@@ -17,11 +17,13 @@ export interface Operacao {
     dataFim: string;
     par: string;
     intervalo: string;
-    operador: Operador;
+    operador?: Operador;
     estrategia: Estrategia;
+    modoTeste: boolean;
+    saldoInicial?: number;
 }
 
 export type CriarOperacaoDTO = Omit<Operacao, 'id' | 'status' | 'dataCriacao' | 'operador' | 'estrategia'> & {
-    idOperador: string;
+    idOperador?: string;
     idEstrategia: string;
 };

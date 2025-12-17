@@ -26,8 +26,10 @@ export const operacaoFormMetadata: FormMetadata = {
                     number: 1,
                     formFields: [
                         { sequence: 1, label: 'Intervalo', field: 'intervalo', type: 'string', fieldSize: '12', nullable: false, hidden: true },
-                        { sequence: 2, label: 'Operador', field: 'idOperador', type: 'string', fieldSize: '12', nullable: false, hidden: true },
-                        { sequence: 3, label: 'Estratégia', field: 'idEstrategia', type: 'string', fieldSize: '12', nullable: true, hidden: true }
+                        { sequence: 2, label: 'Operador', field: 'idOperador', type: 'string', fieldSize: '12', nullable: true, hidden: true },
+                        { sequence: 3, label: 'Estratégia', field: 'idEstrategia', type: 'string', fieldSize: '12', nullable: true, hidden: true },
+                        { sequence: 4, label: 'Modo Teste', field: 'modoTeste', type: 'boolean', fieldSize: '12', nullable: false, hidden: true },
+                        { sequence: 5, label: 'Saldo Inicial', field: 'saldoInicial', type: 'double', fieldSize: '12', nullable: true, hidden: true }
                     ],
                     templates: [
                         { sequence: 1, name: "ConfiguracaoOperacaoTemplate", width: 12 }

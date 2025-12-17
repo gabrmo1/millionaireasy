@@ -1,7 +1,6 @@
 package br.com.bot_mexc.utils;
 
 import br.com.bot_mexc.models.dtos.CandleDTO;
-import br.com.bot_mexc.models.dtos.ValorMoedaDTO;
 import br.com.bot_mexc.models.entities.Candle;
 import br.com.bot_mexc.models.entities.Operacao;
 import lombok.experimental.UtilityClass;
@@ -38,18 +37,30 @@ public class CandleUtils {
         return candles;
     }
 
-    public static Candle converterDtoParaEntidade(CandleDTO c, String par, String intervalo) {
+    public static Candle converterDtoParaEntidade(CandleDTO dto, String par, String intervalo) {
         return Candle.builder()
                 .par(par)
                 .intervalo(intervalo)
-                .dataAbertura(c.openTime())
-                .dataFechamento(c.closeTime())
-                .minima(c.low())
-                .maxima(c.high())
-                .valorAbertura(c.openValue())
-                .valorFechamento(c.closeValue())
-                .volume(c.volume())
+                .dataAbertura(dto.dataAbertura())
+                .dataFechamento(dto.dataFechamento())
+                .minima(dto.minima())
+                .maxima(dto.maxima())
+                .valorAbertura(dto.valorAbertura())
+                .valorFechamento(dto.valorFechamento())
+                .volume(dto.volume())
                 .build();
+    }
+
+    public static CandleDTO converterEntidadeParaDto(Candle entidade) {
+        return new CandleDTO(
+                entidade.getDataAbertura(),
+                entidade.getDataFechamento(),
+                entidade.getValorAbertura(),
+                entidade.getValorFechamento(),
+                entidade.getMinima(),
+                entidade.getMaxima(),
+                entidade.getVolume()
+        );
     }
 
     public static List<String> montarParesDeBusca(List<Operacao> operacoes) {
@@ -58,5 +69,4 @@ public class CandleUtils {
                 .distinct()
                 .toList();
     }
-
 }

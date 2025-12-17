@@ -2,10 +2,13 @@ plugins {
 	java
 	id("org.springframework.boot") version "3.5.4"
 	id("io.spring.dependency-management") version "1.1.7"
+	id("com.google.protobuf") version "0.9.4"
 }
 
 group = "br.com"
 version = "0.0.1-SNAPSHOT"
+
+val protobufVersion = "4.28.2"
 
 java {
 	toolchain {
@@ -43,6 +46,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.java-websocket:Java-WebSocket:1.5.7")
 
+	implementation("com.google.protobuf:protobuf-java:$protobufVersion")
+	implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
+
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
 	annotationProcessor("org.projectlombok:lombok")
@@ -58,4 +64,10 @@ dependencyManagement {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+protobuf {
+	protoc {
+		artifact = "com.google.protobuf:protoc:$protobufVersion"
+	}
 }

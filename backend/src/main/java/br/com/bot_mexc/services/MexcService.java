@@ -4,8 +4,6 @@ import br.com.bot_mexc.integrations.MexcIntegration;
 import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.dtos.mexc.SymbolInfoDTO;
 import br.com.bot_mexc.utils.CandleUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -25,15 +23,12 @@ public class MexcService {
 
     private final MexcIntegration integration;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
     private static final Set<String> STABLECOINS = Set.of("USDT", "USDC", "EUR");
     private static final String STABLECOIN_PAIRS_CACHE_KEY = "stablecoinPairs";
 
-
-    public MexcService(MexcIntegration integration, RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
+    public MexcService(MexcIntegration integration, RedisTemplate<String, Object> redisTemplate) {
         this.integration = integration;
         this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
     }
 
     public List<CandleDTO> consultarCandles(String symbol, String interval, String limit) {
@@ -69,10 +64,11 @@ public class MexcService {
         return new PageImpl<>(pageContent, pageable, filteredPairs.size());
     }
 
+    @SuppressWarnings("unchecked")
     private List<SymbolInfoDTO> getStablecoinPairsFromCache() {
         Object cachedData = redisTemplate.opsForValue().get(STABLECOIN_PAIRS_CACHE_KEY);
         if (cachedData != null) {
-            return objectMapper.convertValue(cachedData, new TypeReference<>() {});
+            return (List<SymbolInfoDTO>) cachedData;
         } else {
             List<SymbolInfoDTO> allPairs = integration.getExchangeInfo().getSymbols().stream()
                     .filter(symbol -> "1".equals(symbol.getStatus()) && STABLECOINS.contains(symbol.getQuoteAsset()))

@@ -4,6 +4,7 @@ import br.com.bot_mexc.models.enums.StatusOperacoes;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -32,11 +33,18 @@ public class Operacao extends BaseEntity {
     String intervalo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_operador", nullable = false)
+    @JoinColumn(name = "id_operador")
     Operador operador;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_estrategia")
     Estrategia estrategia;
+
+    @Column(name = "modo_teste", nullable = false)
+    @Builder.Default
+    Boolean modoTeste = false;
+
+    @Column(name = "saldo_inicial")
+    BigDecimal saldoInicial;
 
 }
