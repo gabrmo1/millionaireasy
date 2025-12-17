@@ -43,7 +43,7 @@ public class MexcSubscriptionService {
     }
 
     public void addSubscription(String par, String intervalo) {
-        final var nomeCanal = formatarNomeCanal(par, traduzirIntervaloParaApi(intervalo));
+        final var nomeCanal = formatarNomeCanal(par, intervalo);
         try {
             var contagem = hashOperations.increment(REDIS_HASH_KEY, nomeCanal, 1L);
             log.info("Contagem de referência para o canal {} aumentada para {}", nomeCanal, contagem);
@@ -59,7 +59,7 @@ public class MexcSubscriptionService {
     }
 
     public void removeSubscription(String par, String intervalo) {
-        final var nomeCanal = formatarNomeCanal(par, traduzirIntervaloParaApi(intervalo));
+        final var nomeCanal = formatarNomeCanal(par, intervalo);
         try {
             if (Boolean.FALSE.equals(hashOperations.hasKey(REDIS_HASH_KEY, nomeCanal))) {
                 log.warn("Solicitada remoção de inscrição para o canal {}, mas ele não está no Redis.", nomeCanal);

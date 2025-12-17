@@ -3,6 +3,7 @@ package br.com.bot_mexc.models.entities;
 import br.com.bot_mexc.models.enums.OperadorComparacao;
 import br.com.bot_mexc.models.enums.OperadorLogico;
 import br.com.bot_mexc.models.enums.TipoOperando;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,6 +21,7 @@ public class CondicaoCompra extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_estrategia", nullable = false)
+    @JsonIgnore
     private Estrategia estrategia;
 
     @Column(name = "ordem", nullable = false)

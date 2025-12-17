@@ -6,6 +6,7 @@ import br.com.bot_mexc.models.dtos.ContextoAnaliseDTO;
 import br.com.bot_mexc.models.dtos.OperacaoCacheDTO;
 import br.com.bot_mexc.models.dtos.mexc.EventoCandleMexcDTO;
 import br.com.bot_mexc.services.*;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -58,7 +59,7 @@ public class KlineAnalysisConsumer {
 
     private ContextoAnaliseDTO montarContextoDeAnalise(EventoCandleMexcDTO evento) {
         var candleRecebido = converterEventoParaCandle(evento);
-        var operacoes = operacaoCacheService.getOperacoesAtivas(evento.par(), evento.intervalo());
+        var operacoes = operacaoCacheService.getOperacoesAtivas(evento.par(), traduzirIntervaloParaTrading(evento.intervalo()));
         var candleFechadoOpt = candleService.verificarViradaEAtualizarCache(candleRecebido, evento.par(), evento.intervalo());
 
         return candleFechadoOpt.map(candleDTO ->
@@ -136,5 +137,25 @@ public class KlineAnalysisConsumer {
     private void pausarProcessamentoParaParInativo(String par, String intervalo) {
         var chave = PREFIXO_THROTTLE + par + ":" + intervalo;
         redisTemplate.opsForValue().set(chave, "PAUSED", 30, TimeUnit.SECONDS);
+    }
+
+    private String traduzirIntervaloParaTrading(String intervaloInterno) {
+        if (intervaloInterno == null || intervaloInterno.isBlank()) {
+            throw new ValidationException("O intervalo não pode ser nulo ou vazio.");
+        }
+
+        return switch (intervaloInterno) {
+            case "Min1" -> "1m";
+            case "Min5" -> "5m";
+            case "Min15" -> "15m";
+            case "Min30" -> "30m";
+            case "Min60" -> "1h";
+            case "Hour4" -> "4h";
+            case "Hour8" -> "8h";
+            case "Day1" -> "1d";
+            case "Week1" -> "1w";
+
+            default -> throw new ValidationException("Intervalo '" + intervaloInterno + "' não é suportado.");
+        };
     }
 }

@@ -43,6 +43,7 @@ public class MexcWebSocketClient extends Endpoint {
         this.websocketUrl = websocketUrl;
         this.rabbitTemplate = rabbitTemplate;
         this.container = ContainerProvider.getWebSocketContainer();
+        this.container.setDefaultMaxBinaryMessageBufferSize(1024 * 1024);
     }
 
     public void connect() {
@@ -60,7 +61,12 @@ public class MexcWebSocketClient extends Endpoint {
         this.session = session;
         log.info("[WSClient-{}] Conectado. ID Sessão: {}", id, session.getId());
 
-        session.addMessageHandler((MessageHandler.Whole<ByteBuffer>) this::handleBinaryMessage);
+        session.addMessageHandler(new MessageHandler.Whole<ByteBuffer>() {
+            @Override
+            public void onMessage(ByteBuffer message) {
+                handleBinaryMessage(message);
+            }
+        });
 
         processPendingSubscriptions();
     }
@@ -69,6 +75,7 @@ public class MexcWebSocketClient extends Endpoint {
     public void onClose(Session session, CloseReason closeReason) {
         this.session = null;
         log.warn("[WSClient-{}] Conexão fechada: {}", id, closeReason);
+
         pendingSubscriptions.addAll(activeChannels);
         activeChannels.clear();
         subscriptionCount.set(0);
@@ -84,7 +91,7 @@ public class MexcWebSocketClient extends Endpoint {
 
     @Override
     public void onError(Session session, Throwable throwable) {
-        log.error("[WSClient-{}] Erro: ", id, throwable);
+        log.error("[WSClient-{}] Erro na sessão: {}", id, throwable.getMessage());
     }
 
     public void subscribe(String channel) {
@@ -174,6 +181,8 @@ public class MexcWebSocketClient extends Endpoint {
 
         } catch (InvalidProtocolBufferException e) {
             log.error("[WSClient-{}] Erro protobuf: {}", id, e.getMessage());
+        } catch (Exception e) {
+            log.error("[WSClient-{}] Erro genérico processando mensagem: {}", id, e.getMessage());
         }
     }
 
