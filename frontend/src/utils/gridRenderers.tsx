@@ -29,7 +29,12 @@ export const BooleanRenderer = (params: GridRenderCellParams) => {
     return params.value ? "Sim" : "Não";
 };
 
-export const StartStopActionRenderer = (params: GridRenderCellParams) => {
+interface StartStopActionProps {
+    params: GridRenderCellParams;
+    onRefresh?: () => void;
+}
+
+export const StartStopAction = ({ params, onRefresh }: StartStopActionProps) => {
     const [loading, setLoading] = useState(false);
     const status = params.row.status;
     const id = params.row.id;
@@ -43,7 +48,12 @@ export const StartStopActionRenderer = (params: GridRenderCellParams) => {
             } else if (status === StatusOperacoes.EM_ANDAMENTO) {
                 await pararOperacao(id);
             }
-            window.location.reload();
+
+            if (onRefresh) {
+                onRefresh();
+            } else {
+                window.location.reload();
+            }
         } catch (error) {
             console.error("Erro ao alterar status", error);
         } finally {
@@ -72,4 +82,8 @@ export const StartStopActionRenderer = (params: GridRenderCellParams) => {
             </IconButton>
         </Tooltip>
     );
+};
+
+export const StartStopActionRenderer = (params: GridRenderCellParams) => {
+    return <StartStopAction params={params} />;
 };

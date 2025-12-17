@@ -11,7 +11,8 @@ interface GenericCrudPageProps<T extends BaseEntity> {
     description?: string;
     fetcher: () => Promise<T[]>;
     deleter?: (id: string) => Promise<void>;
-    gridColumns: GridColDef[];
+    gridColumns?: GridColDef[]; // Agora opcional
+    columnsFactory?: (refresh: () => void) => GridColDef[]; // Nova prop
     FormComponent: ComponentType<{ entityId: string | null; onClose: () => void; onSave: () => void; }>;
 }
 
@@ -21,6 +22,7 @@ export default function GenericCrudPage<T extends BaseEntity>({
                                                                   fetcher,
                                                                   deleter,
                                                                   gridColumns,
+                                                                  columnsFactory,
                                                                   FormComponent,
                                                               }: GenericCrudPageProps<T>) {
     const [entities, setEntities] = useState<T[]>([]);
@@ -36,6 +38,9 @@ export default function GenericCrudPage<T extends BaseEntity>({
     useEffect(() => {
         loadEntities();
     }, [loadEntities]);
+
+    // Define as colunas: usa a factory se existir (passando o refresh), senão usa as colunas estáticas
+    const columns = columnsFactory ? columnsFactory(loadEntities) : (gridColumns || []);
 
     const handleEdit = (id: GridRowId) => {
         setSelectedEntityId(String(id));
@@ -105,7 +110,7 @@ export default function GenericCrudPage<T extends BaseEntity>({
                     <Box sx={{ flexGrow: 1, width: '100%' }}>
                         <DynamicDataGrid
                             initialRows={entities}
-                            gridColumns={gridColumns}
+                            gridColumns={columns}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                         />

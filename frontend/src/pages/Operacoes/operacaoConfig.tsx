@@ -1,9 +1,10 @@
+import React from 'react';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { statusOperacoesLabels } from '../../utils/enumMappings';
 import type { StatusOperacoes } from '../../types/operacao';
-import { StartStopActionRenderer } from '../../utils/gridRenderers';
+import { StartStopAction } from '../../utils/gridRenderers';
 
-export const operacaoColumns: GridColDef[] = [
+export const getOperacaoColumns = (onRefresh: () => void): GridColDef[] => [
     {
         field: 'status',
         headerName: 'Status',
@@ -16,7 +17,9 @@ export const operacaoColumns: GridColDef[] = [
         headerName: 'Ações',
         width: 100,
         sortable: false,
-        renderCell: StartStopActionRenderer
+        renderCell: (params: GridRenderCellParams) => (
+            <StartStopAction params={params} onRefresh={onRefresh} />
+        )
     },
     { field: 'par', headerName: 'Par', width: 120, resizable: false },
     { field: 'intervalo', headerName: 'Intervalo', width: 90, resizable: false },
@@ -67,3 +70,5 @@ export const operacaoColumns: GridColDef[] = [
         valueGetter: (value: { nome: string }) => value?.nome || '',
     },
 ];
+
+export const operacaoColumns: GridColDef[] = getOperacaoColumns(() => {});
