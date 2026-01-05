@@ -1,10 +1,14 @@
-import React from 'react';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { statusOperacoesLabels } from '../../utils/enumMappings';
-import type { StatusOperacoes } from '../../types/operacao';
+import type { StatusOperacoes, Operacao } from '../../types/operacao';
 import { StartStopAction } from '../../utils/gridRenderers';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import { IconButton, Tooltip } from '@mui/material';
 
-export const getOperacaoColumns = (onRefresh: () => void): GridColDef[] => [
+export const getOperacaoColumns = (
+    onRefresh: () => void,
+    onOpenMonitor: (operacao: Operacao) => void
+): GridColDef[] => [
     {
         field: 'status',
         headerName: 'Status',
@@ -15,10 +19,21 @@ export const getOperacaoColumns = (onRefresh: () => void): GridColDef[] => [
     {
         field: 'controle',
         headerName: 'Ações',
-        width: 100,
+        width: 140,
         sortable: false,
         renderCell: (params: GridRenderCellParams) => (
-            <StartStopAction params={params} onRefresh={onRefresh} />
+            <div style={{ display: 'flex', gap: '4px' }}>
+                <StartStopAction params={params} onRefresh={onRefresh} />
+                <Tooltip title="Monitorar e Analisar">
+                    <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => onOpenMonitor(params.row)}
+                    >
+                        <AnalyticsIcon />
+                    </IconButton>
+                </Tooltip>
+            </div>
         )
     },
     { field: 'par', headerName: 'Par', width: 120, resizable: false },
@@ -71,4 +86,4 @@ export const getOperacaoColumns = (onRefresh: () => void): GridColDef[] => [
     },
 ];
 
-export const operacaoColumns: GridColDef[] = getOperacaoColumns(() => {});
+export const operacaoColumns: GridColDef[] = getOperacaoColumns(() => {}, () => {});

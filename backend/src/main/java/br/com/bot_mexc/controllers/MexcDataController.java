@@ -1,5 +1,6 @@
 package br.com.bot_mexc.controllers;
 
+import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.dtos.mexc.SymbolInfoDTO;
 import br.com.bot_mexc.services.MexcService;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -32,5 +34,18 @@ public class MexcDataController {
     @GetMapping("/stablecoins")
     public ResponseEntity<Set<String>> getStablecoins() {
         return ResponseEntity.ok(mexcService.getStablecoins());
+    }
+
+    @GetMapping("/candles")
+    public ResponseEntity<List<CandleDTO>> getCandles(
+            @RequestParam String symbol,
+            @RequestParam String interval,
+            @RequestParam(defaultValue = "1000") String limit
+    ) {
+        // limit 2000 é o máximo da MEXC, garantimos que não exceda
+        int limitInt = Integer.parseInt(limit);
+        if (limitInt > 2000) limit = "2000";
+
+        return ResponseEntity.ok(mexcService.consultarCandles(symbol, interval, limit));
     }
 }

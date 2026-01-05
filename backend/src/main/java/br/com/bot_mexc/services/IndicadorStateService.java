@@ -33,6 +33,15 @@ public class IndicadorStateService {
     private static final String STATE_KEY_PREFIX = "mexc:indicador:state:";
     private static final String HISTORY_KEY_PREFIX = "mexc:price:history:";
 
+    /**
+     * Força a inicialização do estado dos indicadores baseada no histórico.
+     * Deve ser chamado ao iniciar uma operação para evitar "previous" nulo.
+     */
+    public void warmupState(String par, String intervalo, Set<IndicadorConfig> configs) {
+        log.info("Realizando warmup de indicadores para {}/{}", par, intervalo);
+        initializeStateFromHistory(par, intervalo, configs);
+    }
+
     public EstadoIndicadoresDTO getOrInitializeState(String par, String intervalo, Set<IndicadorConfig> configs, LocalDateTime currentCandleTime) {
         final var stateKey = getStateKey(par, intervalo);
         EstadoIndicadoresDTO state = null;

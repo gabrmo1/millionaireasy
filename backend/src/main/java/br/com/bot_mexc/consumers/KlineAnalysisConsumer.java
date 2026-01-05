@@ -13,6 +13,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -46,11 +47,21 @@ public class KlineAnalysisConsumer {
                 return;
             }
 
+            var configsIndicadores = contexto.extrairConfiguracoesUnicasDeIndicadores();
+            var indicadores = calculoIndicadorService.calcularIndicadoresOtimizado(
+                    contexto.getPar(),
+                    contexto.getIntervalo(),
+                    contexto.candle(),
+                    configsIndicadores
+            );
+
             if (contexto.isFechamentoDeCandle()) {
-                processarFechamentoDeCandle(contexto);
-            } else {
-                processarMovimentacaoDePreco(contexto);
+                processarFechamentoDeCandle(contexto, indicadores);
             }
+            // TODO: Reativar futuramente com config de realizar operações Intra-candle (antes do fechamento)
+            // else {
+            //    processarMovimentacaoDePreco(contexto, indicadores);
+            // }
 
         } catch (Exception e) {
             log.error("Erro crítico no fluxo de análise de Kline: {}", e.getMessage(), e);
@@ -65,53 +76,39 @@ public class KlineAnalysisConsumer {
         return candleFechadoOpt.map(candleDTO ->
                         new ContextoAnaliseDTO(candleDTO, operacoes, true))
                 .orElseGet(() -> new ContextoAnaliseDTO(candleRecebido, operacoes, false));
-
     }
 
-    private void processarFechamentoDeCandle(ContextoAnaliseDTO contexto) {
-        log.info("Virada de candle detectada para {} (Fechamento: {}). Executando análise completa.",
-                contexto.getPar(), contexto.candle().valorFechamento());
+    private void processarFechamentoDeCandle(ContextoAnaliseDTO contexto, Map<String, BigDecimal> indicadores) {
+        log.info("Virada de candle detectada para {} (Fechamento: {}).", contexto.getPar(), contexto.candle().valorFechamento());
 
-        var configsIndicadores = contexto.extrairConfiguracoesUnicasDeIndicadores();
-        var indicadores = calculoIndicadorService.calcularIndicadoresOtimizado(
-                contexto.getPar(),
-                contexto.getIntervalo(),
-                contexto.candle(),
-                configsIndicadores
-        );
         avaliarEstrategiasEExecutarOrdens(contexto.operacoes(), indicadores, contexto.candle());
 
+        var configsIndicadores = contexto.extrairConfiguracoesUnicasDeIndicadores();
         indicadorStateService.advanceState(contexto.getPar(), contexto.getIntervalo(), configsIndicadores, contexto.candle());
     }
 
-    private void processarMovimentacaoDePreco(ContextoAnaliseDTO contexto) {
-        if (estaEmPeriodoDeThrottle(contexto.getPar(), contexto.getIntervalo())) {
-            return;
-        }
+    //TODO: NÃO REMOVER
+//    private void processarMovimentacaoDePreco(ContextoAnaliseDTO contexto, Map<String, BigDecimal> indicadores) {
+//        if (estaEmPeriodoDeThrottle(contexto.getPar(), contexto.getIntervalo()))
+//            return;
+//
+//        avaliarEstrategiasEExecutarOrdens(contexto.operacoes(), indicadores, contexto.candle());
+//    }
 
-        var configsIndicadores = contexto.extrairConfiguracoesUnicasDeIndicadores();
-        var indicadores = calculoIndicadorService.calcularIndicadoresOtimizado(
-                contexto.getPar(),
-                contexto.getIntervalo(),
-                contexto.candle(),
-                configsIndicadores
-        );
-
-        avaliarEstrategiasEExecutarOrdens(contexto.operacoes(), indicadores, contexto.candle());
-    }
-
-    private void avaliarEstrategiasEExecutarOrdens(List<OperacaoCacheDTO> operacoes, Map<String, java.math.BigDecimal> indicadores, CandleDTO candle) {
+    private void avaliarEstrategiasEExecutarOrdens(List<OperacaoCacheDTO> operacoes, Map<String, BigDecimal> indicadores, CandleDTO candle) {
         operacoes.forEach(operacao -> {
-            boolean sinalCompra = avaliacaoCondicaoService.avaliarCondicoesCompra(operacao.condicoesCompra(), indicadores);
-
-            if (sinalCompra) {
-                gestaoOrdemService.registrarIntencaoDeCompra(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento());
-                return;
-            }
-
-            boolean sinalVenda = avaliacaoCondicaoService.avaliarCondicoesVenda(operacao.condicoesVenda(), indicadores);
-            if (sinalVenda) {
-                gestaoOrdemService.registrarIntencaoDeVenda(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento());
+            if (Boolean.TRUE.equals(operacao.posicionado())) {
+                boolean sinalVenda = avaliacaoCondicaoService.avaliarCondicoesVenda(operacao.condicoesVenda(), indicadores);
+                if (sinalVenda) {
+                    log.info("Sinal de VENDA detectado para Operação ID: {}", operacao.id());
+                    gestaoOrdemService.registrarIntencaoDeVenda(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento(), indicadores);
+                }
+            } else {
+                boolean sinalCompra = avaliacaoCondicaoService.avaliarCondicoesCompra(operacao.condicoesCompra(), indicadores);
+                if (sinalCompra) {
+                    log.info("Sinal de COMPRA detectado para Operação ID: {}", operacao.id());
+                    gestaoOrdemService.registrarIntencaoDeCompra(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento(), indicadores);
+                }
             }
         });
     }
@@ -154,7 +151,6 @@ public class KlineAnalysisConsumer {
             case "Hour8" -> "8h";
             case "Day1" -> "1d";
             case "Week1" -> "1w";
-
             default -> throw new ValidationException("Intervalo '" + intervaloInterno + "' não é suportado.");
         };
     }

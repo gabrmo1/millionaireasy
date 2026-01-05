@@ -105,3 +105,7 @@ O sistema foi arquitetado para resolver problemas comuns em bots de trading:
 - Zero Gaps na Virada: A lógica de "Turnover" garante que o sistema nunca pule o processamento do milissegundo exato de fechamento de um candle, essencial para a precisão de indicadores técnicos. 
 - Write-Behind: O banco de dados (PostgreSQL) só é acionado quando um candle fecha. As milhares de atualizações de preço por segundo ficam apenas na memória/Redis, protegendo o disco de I/O excessivo. 
 - Cálculo Otimizado: Indicadores não são recalculados lendo 200 candles do banco a cada tick. Utilizamos cálculo incremental sobre um estado em cache, reduzindo a complexidade de O(N) para O(1).
+
+## 4. TODO-List
+1. Possibilidade de parametrizar quantas compras podem ser feitas antes de uma venda (Garantir que cada venda pertença a sua respectiva compra);
+2. Possibilidade de parametrizar se a operação será realizada intra-candle (antes do fechamento do candle);

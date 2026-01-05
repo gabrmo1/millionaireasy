@@ -24,29 +24,33 @@ public class CalculoIndicadorService {
 
     public Map<String, BigDecimal> calcularIndicadoresOtimizado(String par, String intervalo, CandleDTO candleAtual, Set<IndicadorConfig> configs) {
         final var baseState = stateService.getOrInitializeState(par, intervalo, configs, candleAtual.dataAbertura());
-
-        if (baseState == null) {
-            return Collections.emptyMap();
-        }
+        if (baseState == null) return Collections.emptyMap();
 
         final var resultados = new HashMap<String, BigDecimal>();
         resultados.put("PRECO_FECHAMENTO", candleAtual.valorFechamento());
+
+        if (baseState.ultimoPrecoFechamento() != null)
+            resultados.put("PREVIOUS_PRECO_FECHAMENTO", baseState.ultimoPrecoFechamento());
 
         final var calculosRealizadosNesteTick = new HashMap<String, BigDecimal>();
 
         for (IndicadorConfig config : configs) {
             final var canonicalKey = stateService.generateCanonicalKey(config);
+            final var alias = config.getAlias();
+
+            final var itemState = baseState.estados().get(canonicalKey);
+            if (itemState != null)
+                resultados.put("PREVIOUS_" + alias, itemState.valor());
 
             if (calculosRealizadosNesteTick.containsKey(canonicalKey)) {
-                resultados.put(config.getAlias(), calculosRealizadosNesteTick.get(canonicalKey));
+                resultados.put(alias, calculosRealizadosNesteTick.get(canonicalKey));
                 continue;
             }
 
-            final var itemState = baseState.estados().get(canonicalKey);
             final var params = IndicadorConfigDTO.parametrosFromJson(config.getParametros());
 
             if (itemState == null) {
-                resultados.put(config.getAlias(), BigDecimal.ZERO);
+                resultados.put(alias, BigDecimal.ZERO);
                 continue;
             }
 
@@ -71,10 +75,10 @@ public class CalculoIndicadorService {
                 };
 
                 calculosRealizadosNesteTick.put(canonicalKey, valorCalculado);
-                resultados.put(config.getAlias(), valorCalculado);
+                resultados.put(alias, valorCalculado);
 
             } catch (Exception e) {
-                log.error("Erro calc incremental {}: {}", config.getAlias(), e.getMessage());
+                log.error("Erro calc incremental {}: {}", alias, e.getMessage());
             }
         }
         return resultados;
@@ -83,6 +87,7 @@ public class CalculoIndicadorService {
     private int getPeriodoRsi(IndicadorConfig c, Map<String, Integer> p) {
         if (c.getTipoIndicador() == TipoIndicador.RSI_CURTO) return p.getOrDefault("periodoRsiCurto", 7);
         if (c.getTipoIndicador() == TipoIndicador.RSI_MEDIO) return p.getOrDefault("periodoRsiMedio", 14);
+
         return p.getOrDefault("periodoRsiLongo", 21);
     }
 }

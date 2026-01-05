@@ -1,7 +1,10 @@
 package br.com.bot_mexc.controllers;
 
 import br.com.bot_mexc.models.dtos.CriarOperacaoDTO;
+import br.com.bot_mexc.models.dtos.HistoricoOperacaoDTO;
 import br.com.bot_mexc.models.dtos.OperacaoDTO;
+import br.com.bot_mexc.models.dtos.monitoramento.MonitoramentoDataDTO;
+import br.com.bot_mexc.services.MonitoramentoService;
 import br.com.bot_mexc.services.OperacoesService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -14,9 +17,11 @@ import java.util.List;
 @RequestMapping("/v1/operacoes")
 public class OperacaoController {
 
+    private final MonitoramentoService monitoramentoService;
     private final OperacoesService operacoesService;
 
-    public OperacaoController(OperacoesService operacoesService) {
+    public OperacaoController(OperacoesService operacoesService, MonitoramentoService monitoramentoService) {
+        this.monitoramentoService = monitoramentoService;
         this.operacoesService = operacoesService;
     }
 
@@ -28,6 +33,11 @@ public class OperacaoController {
     @GetMapping("/{id}")
     public ResponseEntity<OperacaoDTO> findById(@PathVariable String id) {
         return ResponseEntity.ok(operacoesService.findById(id));
+    }
+
+    @GetMapping("/{id}/historico")
+    public ResponseEntity<HistoricoOperacaoDTO> buscarHistorico(@PathVariable String id) {
+        return ResponseEntity.ok(operacoesService.buscarHistorico(id));
     }
 
     @PostMapping
@@ -62,5 +72,10 @@ public class OperacaoController {
     public ResponseEntity<Void> pararOperacao(@PathVariable String id) {
         operacoesService.pararOperacao(id);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/monitoramento")
+    public ResponseEntity<MonitoramentoDataDTO> buscarDadosMonitoramento(@PathVariable String id) {
+        return ResponseEntity.ok(monitoramentoService.buscarDadosMonitoramento(id));
     }
 }

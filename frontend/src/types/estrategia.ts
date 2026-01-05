@@ -2,7 +2,6 @@ import type { TipoIndicador, OperadorLogico, TipoOperando, OperadorComparacao } 
 
 export interface IndicadorConfigDTO {
     id?: string;
-    clientId: number; // Apenas para controle no frontend
     alias: string;
     tipoIndicador: TipoIndicador;
     parametros: {
@@ -12,7 +11,6 @@ export interface IndicadorConfigDTO {
 
 export interface CondicaoDTO {
     id?: string;
-    clientId: number; // Apenas para controle no frontend
     ordem: number;
     operadorParaProxima?: OperadorLogico;
     operandoATipo: TipoOperando;
@@ -27,11 +25,10 @@ export interface CondicaoDTO {
 export type CondicaoCompraDTO = CondicaoDTO;
 export type CondicaoVendaDTO = CondicaoDTO;
 
-export interface Estrategia {
-    id: string;
+export interface CriarEstrategiaRequestDTO {
     nome: string;
     valorOperacaoFixo?: number;
-    stablecoin?: string;
+    stablecoin: string;
     percentualValorOperacao?: number;
     vendaApenasPorLucro?: boolean;
     percentualLucro?: number;
@@ -40,4 +37,25 @@ export interface Estrategia {
     condicoesVenda: CondicaoVendaDTO[];
 }
 
-export type CriarEstrategiaDTO = Omit<Estrategia, 'id'>;
+export interface IndicadorConfigUI extends IndicadorConfigDTO {
+    clientId: number;
+}
+
+export interface CondicaoUI extends CondicaoDTO {
+    clientId: number;
+}
+
+export interface Estrategia {
+    id: string;
+    nome: string;
+    valorOperacaoFixo?: number;
+    stablecoin?: string;
+    percentualValorOperacao?: number;
+    vendaApenasPorLucro?: boolean;
+    percentualLucro?: number;
+    indicadoresConfig: IndicadorConfigUI[];
+    condicoesCompra: CondicaoUI[];
+    condicoesVenda: CondicaoUI[];
+}
+
+export type EstrategiaFormData = Omit<Estrategia, 'id'>;

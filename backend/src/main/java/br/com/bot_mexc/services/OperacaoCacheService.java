@@ -155,7 +155,7 @@ public class OperacaoCacheService {
 
             if (!vendaPosterior) {
                 posicionado = true;
-                preco = ultimaCompra.get().getValor_moeda();
+                preco = ultimaCompra.get().getValorMoeda();
                 volume = ultimaCompra.get().getVolume();
             }
         }

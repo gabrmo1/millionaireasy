@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Divider, Alert } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
+import Grid from '@mui/material/Grid';
 import type { FormStepMetadata } from '../../../types/formMetadata';
 import type { TemplateProps } from './DynamicForm';
 import FormFieldRenderer from './FormFieldRenderer';
@@ -36,7 +36,7 @@ const FormStepContent: React.FC<FormStepContentProps> = ({ step, templates, form
                     )}
                     <Grid container spacing={2.5}>
                         {row.formFields?.map(field => (
-                            <Grid item xs={12} sm={Number(field.fieldSize)} key={field.sequence}>
+                            <Grid size={{ xs: 12, sm: Number(field.fieldSize) }} key={field.sequence}>
                                 <FormFieldRenderer
                                     field={field}
                                     formData={formData}
@@ -46,7 +46,7 @@ const FormStepContent: React.FC<FormStepContentProps> = ({ step, templates, form
                             </Grid>
                         ))}
                         {row.templates?.map(template => (
-                            <Grid item xs={12} sm={template.width} key={template.sequence}>
+                            <Grid size={{ xs: 12, sm: template.width }} key={template.sequence}>
                                 {renderTemplate(template)}
                             </Grid>
                         ))}

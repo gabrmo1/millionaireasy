@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -21,7 +22,7 @@ import java.util.Map;
 public class AvaliacaoCondicaoService {
 
     public boolean avaliarCondicoesCompra(List<CondicaoCompra> condicoes, Map<String, BigDecimal> indicadores) {
-        if (CollectionUtils.isEmpty(condicoes))
+        if (CollectionUtils.isEmpty(condicoes) || indicadores == null)
             return false;
 
         condicoes.sort(Comparator.comparing(CondicaoCompra::getOrdem));
@@ -50,9 +51,8 @@ public class AvaliacaoCondicaoService {
     }
 
     public boolean avaliarCondicoesVenda(List<CondicaoVenda> condicoes, Map<String, BigDecimal> indicadores) {
-        if (CollectionUtils.isEmpty(condicoes)) {
+        if (CollectionUtils.isEmpty(condicoes) || indicadores == null)
             return false;
-        }
 
         condicoes.sort(Comparator.comparing(CondicaoVenda::getOrdem));
 
@@ -88,16 +88,43 @@ public class AvaliacaoCondicaoService {
         BigDecimal valorB = getValor(tipoB, refB, valB, indicadores);
 
         if (valorA == null || valorB == null) {
+            // Se não temos os valores atuais, impossível avaliar
             return false;
         }
 
-        int comparacao = valorA.compareTo(valorB);
+        int comparacaoAtual = valorA.compareTo(valorB);
 
-        return switch (operador) {
-            case MAIOR_QUE, CRUZOU_PARA_CIMA -> comparacao > 0;
-            case MENOR_QUE, CRUZOU_PARA_BAIXO -> comparacao < 0;
-            default -> false;
-        };
+        switch (operador) {
+            case MAIOR_QUE:
+                return comparacaoAtual > 0;
+            case MENOR_QUE:
+                return comparacaoAtual < 0;
+            case CRUZOU_PARA_CIMA: {
+                BigDecimal prevA = getValorAnterior(tipoA, refA, valA, indicadores);
+                BigDecimal prevB = getValorAnterior(tipoB, refB, valB, indicadores);
+
+                if (prevA == null || prevB == null) {
+                    log.debug("Dados anteriores insuficientes para avaliar 'Cruzou para Cima'. RefA: {}, RefB: {}", refA, refB);
+                    return false;
+                }
+
+                return prevA.compareTo(prevB) < 0 && comparacaoAtual >= 0;
+            }
+            case CRUZOU_PARA_BAIXO: {
+                // Lógica: AnteriorA > AnteriorB  E  AtualA <= AtualB
+                BigDecimal prevA = getValorAnterior(tipoA, refA, valA, indicadores);
+                BigDecimal prevB = getValorAnterior(tipoB, refB, valB, indicadores);
+
+                if (prevA == null || prevB == null) {
+                    log.debug("Dados anteriores insuficientes para avaliar 'Cruzou para Baixo'. RefA: {}, RefB: {}", refA, refB);
+                    return false;
+                }
+
+                return prevA.compareTo(prevB) > 0 && comparacaoAtual <= 0;
+            }
+            default:
+                return false;
+        }
     }
 
     private BigDecimal getValor(TipoOperando tipo, String referencia, BigDecimal valorFixo, Map<String, BigDecimal> indicadores) {
@@ -105,6 +132,15 @@ public class AvaliacaoCondicaoService {
             case VALOR_FIXO -> valorFixo;
             case INDICADOR -> indicadores.get(referencia);
             case PRECO_FECHAMENTO -> indicadores.get("PRECO_FECHAMENTO");
+            default -> null;
+        };
+    }
+
+    private BigDecimal getValorAnterior(TipoOperando tipo, String referencia, BigDecimal valorFixo, Map<String, BigDecimal> indicadores) {
+        return switch (tipo) {
+            case VALOR_FIXO -> valorFixo; // Valor fixo mantém-se o mesmo no passado
+            case INDICADOR -> indicadores.get("PREVIOUS_" + referencia);
+            case PRECO_FECHAMENTO -> indicadores.get("PREVIOUS_PRECO_FECHAMENTO");
             default -> null;
         };
     }

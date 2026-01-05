@@ -28,7 +28,6 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
     if (field.hidden) return null;
 
     const commonProps = {
-        key: field.field,
         label: field.label,
         name: field.field,
         required: !field.nullable,

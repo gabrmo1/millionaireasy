@@ -33,4 +33,7 @@ public class Venda extends BaseEntity {
     @Column(name = "lucro", nullable = false)
     BigDecimal lucro;
 
+    @Column(name = "snapshot_indicadores", columnDefinition = "TEXT")
+    String snapshotIndicadores;
+
 }

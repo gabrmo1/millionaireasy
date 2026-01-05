@@ -1,16 +1,12 @@
 package br.com.bot_mexc.services;
 
 import br.com.bot_mexc.builders.OperacaoBuilder;
-import br.com.bot_mexc.models.dtos.CriarOperacaoDTO;
-import br.com.bot_mexc.models.dtos.EntidadesOperacaoDTO;
-import br.com.bot_mexc.models.dtos.OperacaoDTO;
+import br.com.bot_mexc.models.dtos.*;
 import br.com.bot_mexc.models.entities.Estrategia;
 import br.com.bot_mexc.models.entities.Operacao;
 import br.com.bot_mexc.models.entities.Operador;
 import br.com.bot_mexc.models.enums.StatusOperacoes;
-import br.com.bot_mexc.repositories.EstrategiaRepository;
-import br.com.bot_mexc.repositories.OperacaoRepository;
-import br.com.bot_mexc.repositories.OperadorRepository;
+import br.com.bot_mexc.repositories.*;
 import br.com.bot_mexc.utils.DateUtils;
 import br.com.bot_mexc.utils.OperacoesUtils;
 import jakarta.transaction.Transactional;
@@ -27,20 +23,28 @@ public class OperacoesService {
 
     private final MexcSubscriptionService subscriptionService;
     private final OperacaoCacheService operacaoCacheService;
+    private final IndicadorStateService indicadorStateService;
     private final EstrategiaRepository estrategiaRepository;
     private final OperadorRepository operadorRepository;
     private final OperacaoRepository operacaoRepository;
+    private final CompraRepository compraRepository;
+    private final VendaRepository vendaRepository;
     private final MexcService mexcService;
 
     public OperacoesService(OperacaoRepository operacaoRepository, OperadorRepository operadorRepository,
                             EstrategiaRepository estrategiaRepository, MexcService mexcService,
-                            MexcSubscriptionService subscriptionService, OperacaoCacheService operacaoCacheService) {
+                            MexcSubscriptionService subscriptionService, OperacaoCacheService operacaoCacheService,
+                            CompraRepository compraRepository, VendaRepository vendaRepository,
+                            IndicadorStateService indicadorStateService) {
         this.estrategiaRepository = estrategiaRepository;
         this.operacaoCacheService = operacaoCacheService;
         this.subscriptionService = subscriptionService;
         this.operacaoRepository = operacaoRepository;
         this.operadorRepository = operadorRepository;
+        this.compraRepository = compraRepository;
+        this.vendaRepository = vendaRepository;
         this.mexcService = mexcService;
+        this.indicadorStateService = indicadorStateService;
     }
 
     public List<OperacaoDTO> findAll() {
@@ -53,6 +57,34 @@ public class OperacoesService {
         return operacaoRepository.findById(id)
                 .map(OperacoesUtils::converterEntidadeParaDto)
                 .orElseThrow(() -> new ValidationException("Operação não encontrada."));
+    }
+
+    public HistoricoOperacaoDTO buscarHistorico(String id) {
+        if (!operacaoRepository.existsById(id)) {
+            throw new ValidationException("Operação não encontrada.");
+        }
+
+        var compras = compraRepository.findAllByOperacaoIdOrderByDataCriacaoDesc(id).stream()
+                .map(c -> new CompraDTO(
+                        c.getId(),
+                        c.getDataCompra(),
+                        c.getValorOperacao(),
+                        c.getValorMoeda(),
+                        c.getVolume(),
+                        c.getSnapshotIndicadores()
+                )).toList();
+
+        var vendas = vendaRepository.findAllByOperacaoIdOrderByDataCriacaoDesc(id).stream()
+                .map(v -> new VendaDTO(
+                        v.getId(),
+                        v.getDataVenda(),
+                        v.getValorCompra(),
+                        v.getValorVenda(),
+                        v.getLucro(),
+                        v.getSnapshotIndicadores()
+                )).toList();
+
+        return new HistoricoOperacaoDTO(compras, vendas);
     }
 
     @Transactional
@@ -70,6 +102,13 @@ public class OperacoesService {
     public void iniciarOperacao(String id) {
         var operacao = operacaoRepository.findById(id).orElseThrow(() -> new ValidationException("Operação não encontrada."));
         validarInicioOperacao(operacao);
+
+        try {
+            indicadorStateService.warmupState(operacao.getPar(), operacao.getIntervalo(), operacao.getEstrategia().getIndicadoresConfig());
+        } catch (Exception e) {
+            log.error("Erro ao realizar warmup de indicadores para operação {}: {}", id, e.getMessage(), e);
+            throw new ValidationException("Falha ao inicializar indicadores da estratégia. Tente novamente.");
+        }
 
         operacao.setStatus(StatusOperacoes.EM_ANDAMENTO);
         operacao.setDataInicio(DateUtils.agora());

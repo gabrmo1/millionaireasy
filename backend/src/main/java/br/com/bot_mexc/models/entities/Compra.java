@@ -22,15 +22,25 @@ public class Compra extends BaseEntity {
     Operacao operacao;
 
     @Column(name = "data_compra", nullable = false)
-    LocalDateTime data_compra;
+    LocalDateTime dataCompra;
 
     @Column(name = "valor_operacao", nullable = false)
-    BigDecimal valor_operacao;
+    BigDecimal valorOperacao;
 
     @Column(name = "valor_moeda", nullable = false)
-    BigDecimal valor_moeda;
+    BigDecimal valorMoeda;
 
     @Column(name = "volume", nullable = false)
     BigDecimal volume;
 
+    @Column(name = "snapshot_indicadores", columnDefinition = "TEXT")
+    String snapshotIndicadores;
+
+    @Override
+    public void prePersist() {
+        super.prePersist();
+        if (this.operacao != null && this.operacao.getIdUsuario() != null) {
+            this.setIdUsuario(this.operacao.getIdUsuario());
+        }
+    }
 }
