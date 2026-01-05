@@ -1,10 +1,13 @@
 package br.com.bot_mexc.consumers;
 
+import br.com.bot_mexc.builders.AnaliseBuilder;
 import br.com.bot_mexc.configs.RabbitMQConfig;
 import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.dtos.ContextoAnaliseDTO;
 import br.com.bot_mexc.models.dtos.OperacaoCacheDTO;
 import br.com.bot_mexc.models.dtos.mexc.EventoCandleMexcDTO;
+import br.com.bot_mexc.models.entities.Analise;
+import br.com.bot_mexc.models.entities.IndicadorConfig;
 import br.com.bot_mexc.services.*;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +19,12 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,6 +37,7 @@ public class KlineAnalysisConsumer {
     private final OperacaoCacheService operacaoCacheService;
     private final GestaoOrdemService gestaoOrdemService;
     private final CandleService candleService;
+    private final AnaliseService analiseService;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final ZoneId ZONA_BRASIL = ZoneId.of("America/Sao_Paulo");
@@ -82,9 +89,39 @@ public class KlineAnalysisConsumer {
         log.info("Virada de candle detectada para {} (Fechamento: {}).", contexto.getPar(), contexto.candle().valorFechamento());
 
         avaliarEstrategiasEExecutarOrdens(contexto.operacoes(), indicadores, contexto.candle());
+        salvarAnalisesParaMonitoramento(contexto, indicadores);
 
         var configsIndicadores = contexto.extrairConfiguracoesUnicasDeIndicadores();
         indicadorStateService.advanceState(contexto.getPar(), contexto.getIntervalo(), configsIndicadores, contexto.candle());
+    }
+
+    private void salvarAnalisesParaMonitoramento(ContextoAnaliseDTO contexto, Map<String, BigDecimal> indicadoresCalculados) {
+        var assinaturasProcessadas = new HashSet<>();
+
+        for (OperacaoCacheDTO operacao : contexto.operacoes()) {
+            final var assinatura = operacao.indicadores().stream()
+                    .map(IndicadorConfig::getId)
+                    .sorted()
+                    .collect(Collectors.joining(","));
+
+            if (assinaturasProcessadas.contains(assinatura)) {
+                continue;
+            }
+
+            try {
+                final var analise = AnaliseBuilder.montarAnalise(
+                        contexto.getPar(),
+                        contexto.getIntervalo(),
+                        contexto.candle(),
+                        operacao.indicadores(),
+                        indicadoresCalculados
+                );
+                analiseService.salvarAnaliseAsync(analise);
+                assinaturasProcessadas.add(assinatura);
+            } catch (Exception e) {
+                log.error("Erro ao salvar análise para operação {}: {}", operacao.id(), e.getMessage());
+            }
+        }
     }
 
     //TODO: NÃO REMOVER

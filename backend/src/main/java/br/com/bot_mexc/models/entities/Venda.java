@@ -36,4 +36,11 @@ public class Venda extends BaseEntity {
     @Column(name = "snapshot_indicadores", columnDefinition = "TEXT")
     String snapshotIndicadores;
 
+    @Override
+    public void prePersist() {
+        super.prePersist();
+        if (this.operacao != null && this.operacao.getIdUsuario() != null) {
+            this.setIdUsuario(this.operacao.getIdUsuario());
+        }
+    }
 }
