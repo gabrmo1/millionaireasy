@@ -107,5 +107,9 @@ O sistema foi arquitetado para resolver problemas comuns em bots de trading:
 - Cálculo Otimizado: Indicadores não são recalculados lendo 200 candles do banco a cada tick. Utilizamos cálculo incremental sobre um estado em cache, reduzindo a complexidade de O(N) para O(1).
 
 ## 4. TODO-List
-1. Possibilidade de parametrizar quantas compras podem ser feitas antes de uma venda (Garantir que cada venda pertença a sua respectiva compra);
-2. Possibilidade de parametrizar se a operação será realizada intra-candle (antes do fechamento do candle);
+1. Adicionar funções restantes na aplicação
+2. Criar funcionalidade de exibir relatórios
+3. Criar "spam" de inúmeras operações com diferentes configurações (teste de carga e integridade da aplicação)
+4. Criar funcionalidade de realizar backTesting
+5. Criar interface para personalização da aplicação
+6. Criar conta de admim e funcionalidade para cadastrar novos indicadores e registrar quais fórmulas aquele indicador utilizará

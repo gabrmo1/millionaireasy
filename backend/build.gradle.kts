@@ -47,6 +47,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.java-websocket:Java-WebSocket:1.5.7")
 
+	implementation("org.flywaydb:flyway-core")
+	implementation("org.flywaydb:flyway-database-postgresql")
+
 	implementation("com.google.protobuf:protobuf-java:$protobufVersion")
 	implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
 
