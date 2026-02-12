@@ -22,6 +22,8 @@ export interface CondicaoDTO {
     operandoBValor?: number;
 }
 
+export type CriarEstrategiaDTO = Omit<Estrategia, 'id'>;
+
 export type CondicaoCompraDTO = CondicaoDTO;
 export type CondicaoVendaDTO = CondicaoDTO;
 
