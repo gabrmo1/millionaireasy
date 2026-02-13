@@ -11,6 +11,7 @@ import br.com.bot_mexc.repositories.AnaliseRepository;
 import br.com.bot_mexc.repositories.CompraRepository;
 import br.com.bot_mexc.repositories.OperacaoRepository;
 import br.com.bot_mexc.repositories.VendaRepository;
+import br.com.bot_mexc.utils.constants.IndicadorKeys;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -87,34 +88,40 @@ public class MonitoramentoService {
 
         Map<String, Integer> params = extrairParametrosEstrategia(operacao.getEstrategia().getIndicadoresConfig());
 
+        // Utilizando as constantes para buscar no Map de parâmetros internos
         List<Analise> analises = analiseRepository.buscarAnalisesCompativeis(
                 operacao.getPar(),
                 operacao.getIntervalo(),
                 dataMin,
                 dataMax,
-                params.getOrDefault("RSI_CURTO", 0),
-                params.getOrDefault("RSI_MEDIO", 0),
-                params.getOrDefault("RSI_LONGO", 0),
-                params.getOrDefault("RSI_STOCH", 0),
-                params.getOrDefault("STOCH_K", 0),
-                params.getOrDefault("STOCH_D", 0),
-                params.get("EMA"),
-                params.get("SMA")
+                params.getOrDefault(IndicadorKeys.KEY_RSI_CURTO, 0),
+                params.getOrDefault(IndicadorKeys.KEY_RSI_MEDIO, 0),
+                params.getOrDefault(IndicadorKeys.KEY_RSI_LONGO, 0),
+                params.getOrDefault(IndicadorKeys.KEY_RSI_STOCH, 0),
+                params.getOrDefault(IndicadorKeys.KEY_STOCH_K, 0),
+                params.getOrDefault(IndicadorKeys.KEY_STOCH_D, 0),
+                params.get(IndicadorKeys.KEY_EMA),
+                params.get(IndicadorKeys.KEY_SMA)
         );
 
         Map<String, List<IndicadorPointDTO>> indicadoresMap = new HashMap<>();
-        Arrays.asList("EMA", "SMA", "RSI_Curto", "RSI_Medio", "RSI_Longo", "RSI_Stoch_K", "RSI_Stoch_D")
-                .forEach(k -> indicadoresMap.put(k, new ArrayList<>()));
+
+        // Inicializa listas usando as chaves de Frontend
+        Arrays.asList(
+                IndicadorKeys.NAME_EMA, IndicadorKeys.NAME_SMA,
+                IndicadorKeys.NAME_RSI_CURTO, IndicadorKeys.NAME_RSI_MEDIO, IndicadorKeys.NAME_RSI_LONGO,
+                IndicadorKeys.NAME_RSI_STOCH_K, IndicadorKeys.NAME_RSI_STOCH_D
+        ).forEach(k -> indicadoresMap.put(k, new ArrayList<>()));
 
         for (Analise a : analises) {
             long time = a.getDataAnalise().atZone(ZoneId.systemDefault()).toEpochSecond();
-            addPoint(indicadoresMap.get("EMA"), time, a.getEma());
-            addPoint(indicadoresMap.get("SMA"), time, a.getSma());
-            addPoint(indicadoresMap.get("RSI_Curto"), time, a.getRsiCurto());
-            addPoint(indicadoresMap.get("RSI_Medio"), time, a.getRsiMedio());
-            addPoint(indicadoresMap.get("RSI_Longo"), time, a.getRsiLongo());
-            addPoint(indicadoresMap.get("RSI_Stoch_K"), time, a.getRsiEstocasticoK());
-            addPoint(indicadoresMap.get("RSI_Stoch_D"), time, a.getRsiEstocasticoD());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_EMA), time, a.getEma());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_SMA), time, a.getSma());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_CURTO), time, a.getRsiCurto());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_MEDIO), time, a.getRsiMedio());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_LONGO), time, a.getRsiLongo());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_K), time, a.getRsiEstocasticoK());
+            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_D), time, a.getRsiEstocasticoD());
         }
 
         List<EventoChartDTO> eventos = buscarEventos(operacaoId, dataMin, dataMax);
@@ -144,21 +151,21 @@ public class MonitoramentoService {
 
             TipoIndicador tipo = config.getTipoIndicador();
 
-            // Mapeamento direto pelo Enum
+            // Mapeamento usando as constantes
             if (tipo == TipoIndicador.RSI_CURTO) {
-                params.put("RSI_CURTO", getInt(parametrosMap, "periodo"));
+                params.put(IndicadorKeys.KEY_RSI_CURTO, getInt(parametrosMap, IndicadorKeys.PARAM_PERIODO_RSI_CURTO));
             } else if (tipo == TipoIndicador.RSI_MEDIO) {
-                params.put("RSI_MEDIO", getInt(parametrosMap, "periodo"));
+                params.put(IndicadorKeys.KEY_RSI_MEDIO, getInt(parametrosMap, IndicadorKeys.PARAM_PERIODO_RSI_MEDIO));
             } else if (tipo == TipoIndicador.RSI_LONGO) {
-                params.put("RSI_LONGO", getInt(parametrosMap, "periodo"));
+                params.put(IndicadorKeys.KEY_RSI_LONGO, getInt(parametrosMap, IndicadorKeys.PARAM_PERIODO_RSI_LONGO));
             } else if (tipo == TipoIndicador.RSI_ESTOCASTICO_K || tipo == TipoIndicador.RSI_ESTOCASTICO_D) {
-                params.put("RSI_STOCH", getInt(parametrosMap, "periodoRsi"));
-                params.put("STOCH_K", getInt(parametrosMap, "suavizacaoK"));
-                params.put("STOCH_D", getInt(parametrosMap, "suavizacaoD"));
+                params.put(IndicadorKeys.KEY_RSI_STOCH, getInt(parametrosMap, IndicadorKeys.PARAM_PERIODO_RSI_ESTOCASTICO));
+                params.put(IndicadorKeys.KEY_STOCH_K, getInt(parametrosMap, IndicadorKeys.PARAM_SUAVIZACAO_K));
+                params.put(IndicadorKeys.KEY_STOCH_D, getInt(parametrosMap, IndicadorKeys.PARAM_SUAVIZACAO_D));
             } else if (tipo == TipoIndicador.EMA) {
-                params.put("EMA", getInt(parametrosMap, "periodo"));
+                params.put(IndicadorKeys.KEY_EMA, getInt(parametrosMap, IndicadorKeys.PARAM_PERIODO_EMA));
             } else if (tipo == TipoIndicador.SMA) {
-                params.put("SMA", getInt(parametrosMap, "periodo"));
+                params.put(IndicadorKeys.KEY_SMA, getInt(parametrosMap, IndicadorKeys.PARAM_PERIODO_SMA));
             }
         }
         return params;

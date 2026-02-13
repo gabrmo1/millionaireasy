@@ -1,13 +1,18 @@
 package br.com.bot_mexc.configs.hibernate;
 
+import br.com.bot_mexc.configs.annotations.IgnoreTenantFilter;
 import br.com.bot_mexc.models.entities.Usuario;
 import jakarta.persistence.EntityManager;
+import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.hibernate.Session;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Method;
 
 @Aspect
 @Component
@@ -19,15 +24,30 @@ public class TenantFilterAspect {
         this.entityManager = entityManager;
     }
 
-    @Before("execution(* org.springframework.data.jpa.repository.JpaRepository.*(..))")
-    public void activateUserFilter() {
+    @Before("execution(* br.com.bot_mexc.repositories..*.*(..))")
+    public void handleUserFilter(JoinPoint joinPoint) {
+        Session session = entityManager.unwrap(Session.class);
+
+        if (shouldIgnoreFilter(joinPoint)) {
+            session.disableFilter("userFilter");
+            return;
+        }
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
             Usuario user = (Usuario) authentication.getPrincipal();
-            Session session = entityManager.unwrap(Session.class);
             session.enableFilter("userFilter").setParameter("userId", user.getId());
         }
     }
 
+    private boolean shouldIgnoreFilter(JoinPoint joinPoint) {
+        if (!(joinPoint.getSignature() instanceof MethodSignature signature)) {
+            return false;
+        }
+
+        Method method = signature.getMethod();
+        return method.isAnnotationPresent(IgnoreTenantFilter.class)
+                || joinPoint.getTarget().getClass().isAnnotationPresent(IgnoreTenantFilter.class);
+    }
 }

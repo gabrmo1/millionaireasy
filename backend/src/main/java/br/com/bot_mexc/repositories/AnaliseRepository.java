@@ -1,5 +1,6 @@
 package br.com.bot_mexc.repositories;
 
+import br.com.bot_mexc.configs.annotations.IgnoreTenantFilter;
 import br.com.bot_mexc.models.entities.Analise;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,7 @@ import java.util.List;
 @Repository
 public interface AnaliseRepository extends JpaRepository<Analise, String> {
 
+    @IgnoreTenantFilter
     @Query("""
                 SELECT a FROM Analise a
                 WHERE a.par = :par

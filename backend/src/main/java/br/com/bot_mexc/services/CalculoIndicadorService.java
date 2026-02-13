@@ -5,6 +5,7 @@ import br.com.bot_mexc.models.dtos.IndicadorConfigDTO;
 import br.com.bot_mexc.models.entities.IndicadorConfig;
 import br.com.bot_mexc.models.enums.TipoIndicador;
 import br.com.bot_mexc.utils.CalculoUtils;
+import br.com.bot_mexc.utils.constants.IndicadorKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,10 +28,10 @@ public class CalculoIndicadorService {
         if (baseState == null) return Collections.emptyMap();
 
         final var resultados = new HashMap<String, BigDecimal>();
-        resultados.put("PRECO_FECHAMENTO", candleAtual.valorFechamento());
+        resultados.put(IndicadorKeys.RESULT_PRECO_FECHAMENTO, candleAtual.valorFechamento());
 
         if (baseState.ultimoPrecoFechamento() != null)
-            resultados.put("PREVIOUS_PRECO_FECHAMENTO", baseState.ultimoPrecoFechamento());
+            resultados.put(IndicadorKeys.RESULT_PREVIOUS_PREFIX + IndicadorKeys.RESULT_PRECO_FECHAMENTO, baseState.ultimoPrecoFechamento());
 
         final var calculosRealizadosNesteTick = new HashMap<String, BigDecimal>();
 
@@ -40,7 +41,7 @@ public class CalculoIndicadorService {
 
             final var itemState = baseState.estados().get(canonicalKey);
             if (itemState != null)
-                resultados.put("PREVIOUS_" + alias, itemState.valor());
+                resultados.put(IndicadorKeys.RESULT_PREVIOUS_PREFIX + alias, itemState.valor());
 
             if (calculosRealizadosNesteTick.containsKey(canonicalKey)) {
                 resultados.put(alias, calculosRealizadosNesteTick.get(canonicalKey));
@@ -57,7 +58,7 @@ public class CalculoIndicadorService {
             try {
                 final var valorCalculado = switch (config.getTipoIndicador()) {
                     case EMA -> {
-                        int pEma = params.getOrDefault("periodoEma", 200);
+                        int pEma = params.getOrDefault(IndicadorKeys.PARAM_PERIODO_EMA, 200);
                         yield CalculoUtils.calcularEmaIncremental(candleAtual.valorFechamento(), itemState.valor(), pEma);
                     }
                     case RSI_CURTO, RSI_MEDIO, RSI_LONGO -> {
@@ -85,9 +86,11 @@ public class CalculoIndicadorService {
     }
 
     private int getPeriodoRsi(IndicadorConfig c, Map<String, Integer> p) {
-        if (c.getTipoIndicador() == TipoIndicador.RSI_CURTO) return p.getOrDefault("periodoRsiCurto", 7);
-        if (c.getTipoIndicador() == TipoIndicador.RSI_MEDIO) return p.getOrDefault("periodoRsiMedio", 14);
+        if (c.getTipoIndicador() == TipoIndicador.RSI_CURTO)
+            return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_CURTO, 7);
+        if (c.getTipoIndicador() == TipoIndicador.RSI_MEDIO)
+            return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_MEDIO, 14);
 
-        return p.getOrDefault("periodoRsiLongo", 21);
+        return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_LONGO, 21);
     }
 }

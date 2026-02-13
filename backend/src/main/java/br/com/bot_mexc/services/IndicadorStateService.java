@@ -8,6 +8,7 @@ import br.com.bot_mexc.models.enums.TipoIndicador;
 import br.com.bot_mexc.repositories.CandleRepository;
 import br.com.bot_mexc.utils.CalculoUtils;
 import br.com.bot_mexc.utils.CandleUtils;
+import br.com.bot_mexc.utils.constants.IndicadorKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -91,7 +92,7 @@ public class IndicadorStateService {
             try {
                 switch (config.getTipoIndicador()) {
                     case EMA:
-                        final var pEma = params.getOrDefault("periodoEma", 200);
+                        final var pEma = params.getOrDefault(IndicadorKeys.PARAM_PERIODO_EMA, 200);
                         final var novaEma = CalculoUtils.calcularEmaIncremental(closedCandle.valorFechamento(), estadoAnt.valor(), pEma);
                         novoItem = new EstadoIndicadoresDTO.EstadoIndicadorItem(novaEma, null, null, null);
                         break;
@@ -158,7 +159,7 @@ public class IndicadorStateService {
             var params = IndicadorConfigDTO.parametrosFromJson(config.getParametros());
 
             if (config.getTipoIndicador() == TipoIndicador.EMA) {
-                final var p = params.getOrDefault("periodoEma", 200);
+                final var p = params.getOrDefault(IndicadorKeys.PARAM_PERIODO_EMA, 200);
                 final var val = CalculoUtils.calcularEma(prices, p);
                 estados.put(key, new EstadoIndicadoresDTO.EstadoIndicadorItem(val, null, null, null));
             } else if (isRsi(config.getTipoIndicador())) {
@@ -235,11 +236,11 @@ public class IndicadorStateService {
 
     private int getPeriodoRsi(IndicadorConfig c, Map<String, Integer> p) {
         if (c.getTipoIndicador() == TipoIndicador.RSI_CURTO)
-            return p.getOrDefault("periodoRsiCurto", 7);
+            return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_CURTO, 7);
 
         if (c.getTipoIndicador() == TipoIndicador.RSI_MEDIO)
-            return p.getOrDefault("periodoRsiMedio", 14);
+            return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_MEDIO, 14);
 
-        return p.getOrDefault("periodoRsiLongo", 21);
+        return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_LONGO, 21);
     }
 }
