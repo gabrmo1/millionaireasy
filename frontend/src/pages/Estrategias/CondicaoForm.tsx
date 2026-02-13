@@ -3,15 +3,15 @@ import { Box, IconButton, Paper, Typography, MenuItem, FormControl, InputLabel, 
 import Grid from '@mui/material/GridLegacy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { OperadorLogico, TipoOperando, OperadorComparacao, TipoIndicador } from '../../types/enums';
-import type { CondicaoDTO, IndicadorConfigDTO } from '../../types/estrategia';
+import type { CondicaoUI, IndicadorConfigUI } from '../../types/estrategia';
 import { getTipoOperandoOptions, getOperadorComparacaoOptions, indicatorProperties, type IndicatorUnit } from '../../utils/enumMappings';
 
 interface CondicaoFormProps {
-    condicao: CondicaoDTO;
+    condicao: CondicaoUI;
     index: number;
     totalCondicoes: number;
-    indicadores: IndicadorConfigDTO[];
-    onUpdate: (index: number, updatedCondicao: CondicaoDTO) => void;
+    indicadores: IndicadorConfigUI[];
+    onUpdate: (index: number, updatedCondicao: CondicaoUI) => void;
     onRemove: (index: number) => void;
     tipoCondicao: 'Compra' | 'Venda';
     errors: Record<string, string | null>;
@@ -41,7 +41,7 @@ const CondicaoForm: React.FC<CondicaoFormProps> = ({ condicao, index, totalCondi
         );
     };
 
-    const handleChange = (field: keyof CondicaoDTO, value: any) => {
+    const handleChange = (field: keyof CondicaoUI, value: any) => {
         const updatedCondicao = { ...condicao, [field]: value };
 
         const unitA = getOperandUnit(updatedCondicao.operandoATipo, updatedCondicao.operandoAReferencia);

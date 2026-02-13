@@ -1,20 +1,20 @@
 import React from 'react';
 import type { TemplateProps } from '../../../components/common/forms/DynamicForm';
 import Step3_RegrasCompra from '../formSteps/Step3_RegrasCompra';
-import type { CondicaoDTO } from '../../../types/estrategia';
+import type { CondicaoUI, IndicadorConfigUI } from '../../../types/estrategia';
 import { TipoOperando, OperadorComparacao } from '../../../types/enums';
 
 const AdicionarRegrasCompraTemplate: React.FC<TemplateProps> = ({ formData, errors, handleChange }) => {
 
-    const condicoes = formData.condicoesCompra || [];
-    const indicadores = formData.indicadoresConfig || [];
+    const condicoes = (formData.condicoesCompra || []) as CondicaoUI[];
+    const indicadores = (formData.indicadoresConfig || []) as IndicadorConfigUI[];
 
-    const updateCondicoes = (newCondicoes: CondicaoDTO[]) => {
+    const updateCondicoes = (newCondicoes: CondicaoUI[]) => {
         handleChange('condicoesCompra', newCondicoes);
     };
 
     const addCondicao = () => {
-        const newCondicao: CondicaoDTO = {
+        const newCondicao: CondicaoUI = {
             clientId: Math.random(),
             ordem: condicoes.length,
             operadorParaProxima: 'AND',
@@ -25,7 +25,7 @@ const AdicionarRegrasCompraTemplate: React.FC<TemplateProps> = ({ formData, erro
         updateCondicoes([...condicoes, newCondicao]);
     };
 
-    const updateCondicao = (index: number, updated: CondicaoDTO) => {
+    const updateCondicao = (index: number, updated: CondicaoUI) => {
         const newCondicoes = [...condicoes];
         newCondicoes[index] = updated;
         updateCondicoes(newCondicoes);
@@ -33,7 +33,7 @@ const AdicionarRegrasCompraTemplate: React.FC<TemplateProps> = ({ formData, erro
 
     const removeCondicao = (index: number) => {
         const newCondicoes = condicoes.filter((_: any, i: number) => i !== index)
-            .map((cond: CondicaoDTO, newIndex: number) => ({ ...cond, ordem: newIndex }));
+            .map((cond: CondicaoUI, newIndex: number) => ({ ...cond, ordem: newIndex }));
         updateCondicoes(newCondicoes);
     };
 

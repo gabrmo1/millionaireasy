@@ -2,14 +2,14 @@ import React from 'react';
 import { Box, Button, Typography, Alert } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CondicaoForm from '../CondicaoForm';
-import type { CondicaoDTO, IndicadorConfigDTO } from '../../../types/estrategia';
+import type { CondicaoUI, IndicadorConfigUI } from '../../../types/estrategia';
 
 interface Step4Props {
-    indicadores: IndicadorConfigDTO[];
-    condicoes: CondicaoDTO[];
+    indicadores: IndicadorConfigUI[];
+    condicoes: CondicaoUI[];
     onAdd: () => void;
     onRemove: (index: number) => void;
-    onUpdate: (index: number, updated: CondicaoDTO) => void;
+    onUpdate: (index: number, updated: CondicaoUI) => void;
     errors: Record<string, string | null>;
 }
 

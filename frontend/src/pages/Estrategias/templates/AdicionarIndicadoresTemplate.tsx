@@ -1,19 +1,19 @@
 import React from 'react';
 import type { TemplateProps } from '../../../components/common/forms/DynamicForm';
 import Step2_Indicadores from '../formSteps/Step2_Indicadores';
-import type { IndicadorConfigDTO } from '../../../types/estrategia';
+import type { IndicadorConfigUI } from '../../../types/estrategia';
 import { generateIndicatorAlias } from '../estrategiaUtils';
 
 const AdicionarIndicadoresTemplate: React.FC<TemplateProps> = ({ formData, errors, handleChange }) => {
 
-    const indicadores = formData.indicadoresConfig || [];
+    const indicadores = (formData.indicadoresConfig || []) as IndicadorConfigUI[];
 
-    const updateIndicadores = (newIndicadores: IndicadorConfigDTO[]) => {
+    const updateIndicadores = (newIndicadores: IndicadorConfigUI[]) => {
         handleChange('indicadoresConfig', newIndicadores);
     };
 
     const addIndicador = () => {
-        const newIndicador: IndicadorConfigDTO = {
+        const newIndicador: IndicadorConfigUI = {
             clientId: Math.random(),
             alias: '',
             tipoIndicador: 'RSI_CURTO',
@@ -23,7 +23,7 @@ const AdicionarIndicadoresTemplate: React.FC<TemplateProps> = ({ formData, error
         updateIndicadores([...indicadores, newIndicador]);
     };
 
-    const updateIndicador = (index: number, updated: IndicadorConfigDTO) => {
+    const updateIndicador = (index: number, updated: IndicadorConfigUI) => {
         const newIndicadores = [...indicadores];
         updated.alias = generateIndicatorAlias(updated);
         newIndicadores[index] = updated;

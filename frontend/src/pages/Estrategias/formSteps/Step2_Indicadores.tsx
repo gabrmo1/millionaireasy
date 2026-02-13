@@ -14,16 +14,16 @@ import {
 import Grid from '@mui/material/GridLegacy';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
-import type { IndicadorConfigDTO } from '../../../types/estrategia';
+import type { IndicadorConfigUI } from '../../../types/estrategia';
 import { getTipoIndicadorOptions } from '../../../utils/enumMappings';
 import { indicadorParamsConfig } from '../indicadorParamsConfig';
 import { formatLeadingZeros } from "../../../utils/inputFormatters";
 
 interface Step2Props {
-    indicadores: IndicadorConfigDTO[];
+    indicadores: IndicadorConfigUI[];
     onAdd: () => void;
     onRemove: (index: number) => void;
-    onUpdate: (index: number, updated: IndicadorConfigDTO) => void;
+    onUpdate: (index: number, updated: IndicadorConfigUI) => void;
     errors: Record<string, string | null>;
 }
 
@@ -38,7 +38,7 @@ const Step2_Indicadores: React.FC<Step2Props> = ({ indicadores, onAdd, onRemove,
     };
 
     const handleTypeChange = (index: number, value: any) => {
-        const tipo = value as IndicadorConfigDTO['tipoIndicador'];
+        const tipo = value as IndicadorConfigUI['tipoIndicador'];
         const paramsConf = indicadorParamsConfig[tipo];
         const newParams: { [key: string]: number } = {};
 
