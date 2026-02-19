@@ -13,10 +13,10 @@ import {
 } from '@mui/material';
 import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import type { FormFieldMetadata } from '../../../types/formMetadata';
 import { formatLeadingZeros } from "../../../utils/inputFormatters.ts";
-import ArrayFieldRenderer from './ArrayFieldRenderer'; // Importação do novo componente
+import ArrayFieldRenderer from './ArrayFieldRenderer';
 
 interface FormFieldRendererProps {
     field: FormFieldMetadata;
@@ -114,7 +114,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                 <DatePicker
                     {...commonProps}
                     value={formData[field.field] ? dayjs(formData[field.field]) : null}
-                    onChange={(newValue) => handleChange(field.field, newValue ? newValue.toISOString() : null)}
+                    onChange={(newValue: Dayjs | null) => handleChange(field.field, newValue ? newValue.toISOString() : null)}
                     slotProps={{
                         textField: {
                             size: 'small',
@@ -132,7 +132,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                 <DateTimePicker
                     {...commonProps}
                     value={formData[field.field] ? dayjs(formData[field.field]) : null}
-                    onChange={(newValue) => handleChange(field.field, newValue ? newValue.toISOString() : null)}
+                    onChange={(newValue: Dayjs | null) => handleChange(field.field, newValue ? newValue.toISOString() : null)}
                     slotProps={{
                         textField: {
                             size: 'small',
