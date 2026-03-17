@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table(name = "pausas_operacoes")
 @EqualsAndHashCode(callSuper = true)
-public class PausaOperacao extends BaseEntity {
+public class PausaOperacao extends BaseEntity { //TODO: remover
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_operacao", nullable = false)
