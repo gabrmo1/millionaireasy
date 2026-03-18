@@ -181,7 +181,7 @@ public class MonitoramentoService {
                     final var cor = "#26a69a";
                     final var tooltip = "Compra: " + c.getVolume();
 
-                    return new EventoChartDTO(time, tipo, preco, cor, tooltip);
+                    return new EventoChartDTO(time, tipo, preco, tooltip, cor);
                 })
                 .toList());
 
@@ -195,7 +195,7 @@ public class MonitoramentoService {
                     final var cor = "#ef5350";
                     final var tooltip = "Lucro: " + v.getLucro() + "%";
 
-                    return new EventoChartDTO(time, tipo, preco, cor, tooltip);
+                    return new EventoChartDTO(time, tipo, preco, tooltip, cor);
                 })
                 .toList());
 
