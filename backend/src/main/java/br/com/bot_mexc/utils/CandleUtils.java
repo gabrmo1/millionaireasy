@@ -2,14 +2,11 @@ package br.com.bot_mexc.utils;
 
 import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.entities.Candle;
-import br.com.bot_mexc.models.entities.Operacao;
 import lombok.experimental.UtilityClass;
 import org.json.JSONArray;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,9 +19,8 @@ public class CandleUtils {
 
         for (int i = 0; i < arr.length(); i++) {
             JSONArray candleJson = arr.getJSONArray(i);
-            ZoneId zonaBrasil = ZoneId.of("America/Sao_Paulo");
-            LocalDateTime openTime = Instant.ofEpochMilli(candleJson.getLong(0)).atZone(zonaBrasil).toLocalDateTime();
-            LocalDateTime closeTime = Instant.ofEpochMilli(candleJson.getLong(6)).atZone(zonaBrasil).toLocalDateTime();
+            Instant openTime = Instant.ofEpochMilli(candleJson.getLong(0));
+            Instant closeTime = Instant.ofEpochMilli(candleJson.getLong(6));
             BigDecimal open = new BigDecimal(candleJson.getString(1));
             BigDecimal high = new BigDecimal(candleJson.getString(2));
             BigDecimal low = new BigDecimal(candleJson.getString(3));
@@ -61,12 +57,5 @@ public class CandleUtils {
                 entidade.getMaxima(),
                 entidade.getVolume()
         );
-    }
-
-    public static List<String> montarParesDeBusca(List<Operacao> operacoes) {
-        return operacoes.stream()
-                .map(op -> op.getPar() + "," + op.getIntervalo())
-                .distinct()
-                .toList();
     }
 }

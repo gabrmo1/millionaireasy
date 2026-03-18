@@ -1,11 +1,11 @@
 package br.com.bot_mexc.models.dtos;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record VendaDTO(
         String id,
-        LocalDateTime dataVenda,
+        Instant dataVenda,
         BigDecimal valorCompra,
         BigDecimal valorVenda,
         BigDecimal lucro,

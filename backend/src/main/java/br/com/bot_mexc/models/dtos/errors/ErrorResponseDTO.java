@@ -1,9 +1,9 @@
 package br.com.bot_mexc.models.dtos.errors;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record ErrorResponseDTO(
         String message,
-        LocalDateTime timestamp
+        Instant timestamp
 ) {
 }

@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -22,7 +22,10 @@ public class Venda extends BaseEntity {
     Operacao operacao;
 
     @Column(name = "data_venda", nullable = false)
-    LocalDateTime dataVenda;
+    Instant dataVenda;
+
+    @Column(name = "data_candle")
+    Instant dataCandle;
 
     @Column(name = "valor_compra", nullable = false)
     BigDecimal valorCompra;

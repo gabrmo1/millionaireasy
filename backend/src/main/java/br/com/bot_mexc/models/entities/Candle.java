@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -22,10 +22,10 @@ public class Candle extends BaseEntity {
     String intervalo;
 
     @Column(name = "data_abertura", nullable = false)
-    LocalDateTime dataAbertura;
+    Instant dataAbertura;
 
     @Column(name = "data_fechamento", nullable = false)
-    LocalDateTime dataFechamento;
+    Instant dataFechamento;
 
     @Column(name = "valor_abertura", nullable = false)
     BigDecimal valorAbertura;
@@ -41,6 +41,5 @@ public class Candle extends BaseEntity {
 
     @Column(name = "volume", nullable = false)
     BigDecimal volume;
-
 
 }

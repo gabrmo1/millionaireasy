@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.Map;
 
 @Slf4j
@@ -33,15 +34,16 @@ public class SimulacaoService {
 
     public void processarOrdemSimulada(OperacaoCacheDTO operacaoCache, OrdemRequestDTO ordem) {
         final var snapshotIndicadores = serializarIndicadores(ordem.indicadores());
+        final var dataCandle = ordem.dataCandle();
 
         if (ordem.tipo() == OrdemRequestDTO.TipoOrdem.BUY) {
-            executarCompraSimulada(operacaoCache, ordem.preco(), snapshotIndicadores);
+            executarCompraSimulada(operacaoCache, ordem.preco(), snapshotIndicadores, dataCandle);
         } else {
-            executarVendaSimulada(operacaoCache, ordem.preco(), snapshotIndicadores);
+            executarVendaSimulada(operacaoCache, ordem.preco(), snapshotIndicadores, dataCandle);
         }
     }
 
-    private void executarCompraSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores) {
+    private void executarCompraSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores, Instant dataCandle) {
         if (cache.posicionado()) {
             return;
         }
@@ -64,12 +66,12 @@ public class SimulacaoService {
 
         operacaoCacheService.atualizarEstadoAposCompra(cache.id(), cache.par(), cache.intervalo(), novoSaldo, precoAtual, volumeLiquido);
 
-        salvarCompraNoBanco(cache.id(), precoAtual, valorInvestimento, volumeLiquido, novoSaldo, snapshotIndicadores);
+        salvarCompraNoBanco(cache.id(), precoAtual, valorInvestimento, volumeLiquido, novoSaldo, snapshotIndicadores, dataCandle);
 
         log.info("[SIMULAÇÃO] COMPRA Executada. Vol: {} @ {}. Saldo Restante: {}", volumeLiquido, precoAtual, novoSaldo);
     }
 
-    private void executarVendaSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores) {
+    private void executarVendaSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores, Instant dataCandle) {
         if (!cache.posicionado())
             return;
 
@@ -93,12 +95,12 @@ public class SimulacaoService {
 
         operacaoCacheService.atualizarEstadoAposVenda(cache.id(), cache.par(), cache.intervalo(), novoSaldo);
 
-        salvarVendaNoBanco(cache.id(), precoEntrada, precoAtual, lucro, novoSaldo, snapshotIndicadores);
+        salvarVendaNoBanco(cache.id(), precoEntrada, precoAtual, lucro, novoSaldo, snapshotIndicadores, dataCandle);
 
         log.info("[SIMULAÇÃO] VENDA Executada. Lucro: {}. Novo Saldo: {}", lucro, novoSaldo);
     }
 
-    private void salvarCompraNoBanco(String opId, BigDecimal preco, BigDecimal valor, BigDecimal vol, BigDecimal saldo, String snapshot) {
+    private void salvarCompraNoBanco(String opId, BigDecimal preco, BigDecimal valor, BigDecimal vol, BigDecimal saldo, String snapshot, Instant dataCandle) {
         final var opProxy = operacaoRepository.getReferenceById(opId);
         final var compra = new Compra();
 
@@ -107,13 +109,14 @@ public class SimulacaoService {
         compra.setValorOperacao(valor);
         compra.setVolume(vol);
         compra.setDataCompra(DateUtils.agora());
+        compra.setDataCandle(dataCandle);
         compra.setSnapshotIndicadores(snapshot);
 
         compraRepository.save(compra);
         operacaoRepository.atualizarSaldo(opId, saldo);
     }
 
-    private void salvarVendaNoBanco(String opId, BigDecimal precoCompra, BigDecimal precoVenda, BigDecimal lucro, BigDecimal saldo, String snapshot) {
+    private void salvarVendaNoBanco(String opId, BigDecimal precoCompra, BigDecimal precoVenda, BigDecimal lucro, BigDecimal saldo, String snapshot, Instant dataCandle) {
         final var opProxy = operacaoRepository.getReferenceById(opId);
         final var venda = new Venda();
 
@@ -122,6 +125,7 @@ public class SimulacaoService {
         venda.setValorVenda(precoVenda);
         venda.setLucro(lucro);
         venda.setDataVenda(DateUtils.agora());
+        venda.setDataCandle(dataCandle);
         venda.setSnapshotIndicadores(snapshot);
 
         vendaRepository.save(venda);

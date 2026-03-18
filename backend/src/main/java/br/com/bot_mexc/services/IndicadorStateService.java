@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +43,7 @@ public class IndicadorStateService {
         initializeStateFromHistory(par, intervalo, configs);
     }
 
-    public EstadoIndicadoresDTO getOrInitializeState(String par, String intervalo, Set<IndicadorConfig> configs, LocalDateTime currentCandleTime) {
+    public EstadoIndicadoresDTO getOrInitializeState(String par, String intervalo, Set<IndicadorConfig> configs, Instant currentCandleTime) {
         final var stateKey = getStateKey(par, intervalo);
         EstadoIndicadoresDTO state = null;
 
@@ -137,7 +137,7 @@ public class IndicadorStateService {
     }
 
     private EstadoIndicadoresDTO initializeStateFromHistory(String par, String intervalo, Set<IndicadorConfig> configs) {
-        final var history = fetchCandlesHistory(par, intervalo, 300);
+        final var history = fetchCandlesHistory(par, intervalo);
 
         if (history.isEmpty())
             return null;
@@ -189,16 +189,16 @@ public class IndicadorStateService {
         return state;
     }
 
-    private List<CandleDTO> fetchCandlesHistory(String par, String intervalo, int limit) {
-        final var dbCandles = candleRepository.findTopCandlesDesc(par, intervalo, org.springframework.data.domain.PageRequest.of(0, limit));
-        if (dbCandles.size() >= limit) {
+    private List<CandleDTO> fetchCandlesHistory(String par, String intervalo) {
+        final var dbCandles = candleRepository.findTopCandlesDesc(par, intervalo, org.springframework.data.domain.PageRequest.of(0, 300));
+        if (dbCandles.size() >= 300) {
             dbCandles.sort(Comparator.comparing(br.com.bot_mexc.models.entities.Candle::getDataFechamento));
             return dbCandles.stream().map(CandleUtils::converterEntidadeParaDto).toList();
         }
-        return mexcService.consultarCandles(par, intervalo, String.valueOf(limit));
+        return mexcService.consultarCandles(par, intervalo, String.valueOf(300));
     }
 
-    private boolean isStateStale(EstadoIndicadoresDTO state, LocalDateTime currentCandleTime, String intervalo) {
+    private boolean isStateStale(EstadoIndicadoresDTO state, Instant currentCandleTime, String intervalo) {
         final var minutesDiff = Duration.between(state.ultimaDataFechamento(), currentCandleTime).toMinutes();
         final var intervalMinutes = parseInterval(intervalo);
         return minutesDiff > (intervalMinutes * 2);

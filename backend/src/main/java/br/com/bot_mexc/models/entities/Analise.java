@@ -1,10 +1,12 @@
 package br.com.bot_mexc.models.entities;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -25,7 +27,7 @@ public class Analise extends BaseEntity {
     BigDecimal valorAtualMoeda;
 
     @Column(name = "data_analise", nullable = false)
-    LocalDateTime dataAnalise;
+    Instant dataAnalise;
 
     @Column(name = "periodo_ema")
     Integer periodoEma;

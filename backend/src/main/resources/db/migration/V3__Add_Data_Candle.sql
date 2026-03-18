@@ -1,0 +1,2 @@
+ALTER TABLE compras ADD COLUMN data_candle TIMESTAMP;
+ALTER TABLE vendas ADD COLUMN data_candle TIMESTAMP;
