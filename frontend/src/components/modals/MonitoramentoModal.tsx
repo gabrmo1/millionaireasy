@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -21,9 +21,9 @@ import {
     ShoppingCart,
     Sell
 } from '@mui/icons-material';
-import { getMonitoramentoData } from '../../services/operacaoService';
-import type { MonitoramentoDataDTO } from '../../types/monitoramento';
+
 import TradingChart from '../chart/TradingChart';
+import { useMonitoramento } from '../../hooks/useMonitoramento';
 
 interface MonitoramentoModalProps {
     open: boolean;
@@ -33,46 +33,17 @@ interface MonitoramentoModalProps {
 
 const MonitoramentoModal: React.FC<MonitoramentoModalProps> = ({ open, onClose, operacaoId }) => {
     const theme = useTheme();
+    const { data, loading, error, refresh, clearError } = useMonitoramento(operacaoId, open);
 
-    const [data, setData] = useState<MonitoramentoDataDTO | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [refreshKey, setRefreshKey] = useState(0);
-    const [alertMessage, setAlertMessage] = useState("");
+    const stats = useMemo(() => {
+        if (!data?.eventos) return { compras: 0, vendas: 0 };
 
-    useEffect(() => {
-        if (!open || !operacaoId) return;
-
-        let isMounted = true;
-
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const result = await getMonitoramentoData(operacaoId);
-                if (isMounted) {
-                    setData(result);
-                }
-            } catch (error) {
-                if (isMounted) {
-                    setAlertMessage("Erro ao buscar dados de monitoramento da operação.");
-                    console.error("Erro no monitoramento:", error);
-                }
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        fetchData();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [open, operacaoId, refreshKey]);
-
-    const handleRefresh = () => {
-        setRefreshKey(prev => prev + 1);
-    };
+        return data.eventos.reduce((acc, evento) => {
+            if (evento.tipo === 'COMPRA') acc.compras++;
+            if (evento.tipo === 'VENDA') acc.vendas++;
+            return acc;
+        }, { compras: 0, vendas: 0 });
+    }, [data?.eventos]);
 
     return (
         <Dialog
@@ -82,71 +53,86 @@ const MonitoramentoModal: React.FC<MonitoramentoModalProps> = ({ open, onClose, 
             fullWidth
             PaperProps={{ sx: { height: '90vh', display: 'flex', flexDirection: 'column' } }}
         >
-            <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', position: 'relative', borderBottom: 1, borderColor: 'divider' }}>
-                Monitoramento {data ? `${data.par} ${data.intervalo} - ${data.nomeEstrategia}` : "Carregando..."}
+            <DialogTitle sx={{
+                textAlign: 'center',
+                fontWeight: 'bold',
+                position: 'relative',
+                borderBottom: 1,
+                borderColor: 'divider'
+            }}>
+                {loading ? "Carregando Operação..." : (
+                    `Monitoramento: ${data?.par || ''} (${data?.intervalo || ''}) - ${data?.nomeEstrategia || ''}`
+                )}
 
                 <Box sx={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 1 }}>
                     <Button
                         startIcon={<RefreshIcon />}
-                        variant="outlined"
+                        variant="contained"
                         size="small"
-                        onClick={handleRefresh}
-                        disabled={loading}
+                        onClick={refresh}
+                        disabled={loading || !operacaoId}
                     >
                         Atualizar
                     </Button>
-                    <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+                    <IconButton onClick={onClose} size="small">
+                        <CloseIcon />
+                    </IconButton>
                 </Box>
             </DialogTitle>
 
-            <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', backgroundColor: theme.palette.background.default }}>
+            <DialogContent sx={{
+                p: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                overflow: 'hidden',
+                backgroundColor: theme.palette.background.default
+            }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: 2 }}>
                         <CircularProgress />
-                        <Typography color="text.secondary">Sincronizando dados com a corretora...</Typography>
+                        <Typography color="text.secondary">Calculando métricas históricas...</Typography>
                     </Box>
                 ) : !data ? (
                     <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <Typography color="text.secondary">Não foi possível carregar os dados de monitoramento.</Typography>
+                        <Typography color="text.secondary">Selecione uma operação para visualizar os detalhes.</Typography>
                     </Box>
                 ) : (
                     <>
+                        {/* Área do Gráfico - Consome o espaço disponível */}
                         <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
                             <TradingChart data={data} />
                         </Box>
 
+                        {/* Rodapé de Estatísticas */}
                         <Box sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper }}>
-                            <Grid container spacing={3} justifyContent="center">
+                            <Grid container spacing={2}>
                                 <Grid item xs={12} sm={4}>
-                                    <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(0, 230, 118, 0.05)' }}>
-                                        <TrendingUp color="success" fontSize="large" />
+                                    <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderColor: data.lucroTotal >= 0 ? 'success.main' : 'error.main' }}>
+                                        <TrendingUp color={data.lucroTotal >= 0 ? "success" : "error"} />
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" textTransform="uppercase">Lucro Total</Typography>
-                                            <Typography variant="h5" fontWeight="bold" color="success.main">
-                                                {data.lucroTotal >= 0 ? '+' : ''} ${data.lucroTotal?.toFixed(2) || '0.00'}
+                                            <Typography variant="caption" color="text.secondary">LUCRO ACUMULADO</Typography>
+                                            <Typography variant="h6" fontWeight="bold">
+                                                {data.lucroTotal >= 0 ? '+' : ''}${data.lucroTotal.toFixed(2)}
                                             </Typography>
                                         </Box>
                                     </Paper>
                                 </Grid>
                                 <Grid item xs={12} sm={4}>
                                     <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <ShoppingCart color="error" fontSize="large" />
+                                        <ShoppingCart color="primary" />
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" textTransform="uppercase">Compras Realizadas</Typography>
-                                            <Typography variant="h5" fontWeight="bold">
-                                                {data.eventos.filter(e => e.tipo === 'COMPRA').length}
-                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">ORDENS DE COMPRA</Typography>
+                                            <Typography variant="h6" fontWeight="bold">{stats.compras}</Typography>
                                         </Box>
                                     </Paper>
                                 </Grid>
                                 <Grid item xs={12} sm={4}>
                                     <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <Sell color="success" fontSize="large" />
+                                        <Sell color="secondary" />
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" textTransform="uppercase">Vendas (Take Profit)</Typography>
-                                            <Typography variant="h5" fontWeight="bold">
-                                                {data.eventos.filter(e => e.tipo === 'VENDA').length}
-                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">ORDENS DE VENDA</Typography>
+                                            <Typography variant="h6" fontWeight="bold">{stats.vendas}</Typography>
                                         </Box>
                                     </Paper>
                                 </Grid>
@@ -156,15 +142,9 @@ const MonitoramentoModal: React.FC<MonitoramentoModalProps> = ({ open, onClose, 
                 )}
             </DialogContent>
 
-            <Snackbar
-                open={!!alertMessage}
-                autoHideDuration={4000}
-                onClose={() => setAlertMessage("")}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-                sx={{ position: 'absolute', top: 100 }}
-            >
-                <Alert onClose={() => setAlertMessage("")} severity="error" sx={{ width: '100%', boxShadow: 3 }}>
-                    {alertMessage}
+            <Snackbar open={!!error} autoHideDuration={5000} onClose={clearError}>
+                <Alert onClose={clearError} severity="error" variant="filled">
+                    {error}
                 </Alert>
             </Snackbar>
         </Dialog>

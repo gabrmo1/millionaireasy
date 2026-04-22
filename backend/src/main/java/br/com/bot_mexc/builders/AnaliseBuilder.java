@@ -7,6 +7,7 @@ import br.com.bot_mexc.models.entities.IndicadorConfig;
 import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 
@@ -19,7 +20,7 @@ public class AnaliseBuilder {
                 .intervalo(intervalo)
                 .valorAtualMoeda(candle.valorFechamento())
                 .volume(candle.volume())
-                .dataAnalise(candle.dataAbertura())
+                .dataAnalise(Instant.ofEpochSecond(candle.dataAbertura()))
                 .periodoRsiCurto(0)
                 .periodoRsiMedio(0)
                 .periodoRsiLongo(0)

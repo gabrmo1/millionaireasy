@@ -7,6 +7,7 @@ import br.com.bot_mexc.models.entities.Operacao;
 import br.com.bot_mexc.models.entities.Operador;
 import br.com.bot_mexc.models.enums.StatusOperacoes;
 import br.com.bot_mexc.repositories.*;
+import br.com.bot_mexc.services.mexc.MexcSubscriptionService;
 import br.com.bot_mexc.utils.DateUtils;
 import br.com.bot_mexc.utils.OperacoesUtils;
 import jakarta.transaction.Transactional;
@@ -29,10 +30,10 @@ public class OperacoesService {
     private final OperacaoRepository operacaoRepository;
     private final CompraRepository compraRepository;
     private final VendaRepository vendaRepository;
-    private final MexcService mexcService;
+    private final MexcConnectionService mexcConnectionService;
 
     public OperacoesService(OperacaoRepository operacaoRepository, OperadorRepository operadorRepository,
-                            EstrategiaRepository estrategiaRepository, MexcService mexcService,
+                            EstrategiaRepository estrategiaRepository, MexcConnectionService mexcConnectionService,
                             MexcSubscriptionService subscriptionService, OperacaoCacheService operacaoCacheService,
                             CompraRepository compraRepository, VendaRepository vendaRepository,
                             IndicadorStateService indicadorStateService) {
@@ -43,7 +44,7 @@ public class OperacoesService {
         this.operadorRepository = operadorRepository;
         this.compraRepository = compraRepository;
         this.vendaRepository = vendaRepository;
-        this.mexcService = mexcService;
+        this.mexcConnectionService = mexcConnectionService;
         this.indicadorStateService = indicadorStateService;
     }
 
@@ -215,7 +216,7 @@ public class OperacoesService {
         if (Objects.isNull(estrategia.getValorOperacaoFixo()))
             return;
 
-        final var stablecoins = mexcService.getStablecoins();
+        final var stablecoins = mexcConnectionService.getStablecoins();
         var quoteAsset = "";
         for (String stable : stablecoins) {
             if (par.endsWith(stable)) {

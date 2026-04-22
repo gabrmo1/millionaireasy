@@ -16,8 +16,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +89,7 @@ public class KlineAnalysisConsumer {
         indicadorStateService.advanceState(contexto.getPar(), contexto.getIntervalo(), configsIndicadores, contexto.candle());
     }
 
+    //TODO: Verificar por quê o horário do salvamento está diferente do horário do candle
     private void salvarAnalisesParaMonitoramento(ContextoAnaliseDTO contexto, Map<String, BigDecimal> indicadoresCalculados) {
         var assinaturasProcessadas = new HashSet<>();
 
@@ -150,8 +149,8 @@ public class KlineAnalysisConsumer {
 
     private CandleDTO converterEventoParaCandle(EventoCandleMexcDTO evento) {
         return new CandleDTO(
-                Instant.ofEpochMilli(evento.inicioJanela()),
-                Instant.ofEpochMilli(evento.fimJanela()),
+                evento.inicioJanela(),
+                evento.fimJanela(),
                 evento.precoAbertura(),
                 evento.precoFechamento(),
                 evento.minima(),

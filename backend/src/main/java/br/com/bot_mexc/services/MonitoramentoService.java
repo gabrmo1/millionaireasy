@@ -29,17 +29,17 @@ import java.util.*;
 public class MonitoramentoService {
 
     private final OperacaoRepository operacaoRepository;
-    private final MexcService mexcService;
+    private final MexcConnectionService mexcConnectionService;
     private final AnaliseRepository analiseRepository;
     private final CompraRepository compraRepository;
     private final VendaRepository vendaRepository;
     private final ObjectMapper objectMapper;
 
-    public MonitoramentoService(OperacaoRepository operacaoRepository, MexcService mexcService,
+    public MonitoramentoService(OperacaoRepository operacaoRepository, MexcConnectionService mexcConnectionService,
                                 AnaliseRepository analiseRepository, CompraRepository compraRepository,
                                 VendaRepository vendaRepository, ObjectMapper objectMapper) {
         this.operacaoRepository = operacaoRepository;
-        this.mexcService = mexcService;
+        this.mexcConnectionService = mexcConnectionService;
         this.analiseRepository = analiseRepository;
         this.compraRepository = compraRepository;
         this.vendaRepository = vendaRepository;
@@ -48,28 +48,26 @@ public class MonitoramentoService {
 
     public MonitoramentoDataDTO buscarDadosMonitoramento(String operacaoId) {
         final var operacao = operacaoRepository.findById(operacaoId).orElseThrow(() -> new RuntimeException("Operação não encontrada"));
-        final var candlesMexc = mexcService.consultarCandles(operacao.getPar(), operacao.getIntervalo(), "1000");
+        final var candlesMexc = mexcConnectionService.consultarCandles(operacao.getPar(), operacao.getIntervalo(), "1000"); //TODO: verificar por quê a data tem 3 dígitos a mais
 
         if (candlesMexc.isEmpty())
             return buildEmptyDTO(operacao);
 
         var candleChartDTOS = new ArrayList<CandleChartDTO>();
-        var dataMin = (Instant) null;
-        var dataMax = (Instant) null;
+        var dataMin = (Long) null;
+        var dataMax = (Long) null;
 
         for (CandleDTO c : candlesMexc) {
             final var dataCandle = c.dataAbertura();
 
-            if (dataMin == null || dataCandle.isBefore(dataMin))
+            if (dataMin == null || dataCandle < (dataMin))
                 dataMin = dataCandle;
 
-            if (dataMax == null || dataCandle.isAfter(dataMax))
+            if (dataMax == null || dataCandle > (dataMax))
                 dataMax = dataCandle;
 
-            final var timeSeconds = dataCandle.atZone(ZoneId.systemDefault()).toEpochSecond();
-
             candleChartDTOS.add(CandleChartDTO.builder()
-                    .time(timeSeconds)
+                    .time(dataCandle)
                     .open(c.valorAbertura())
                     .high(c.maxima())
                     .low(c.minima())
@@ -82,8 +80,8 @@ public class MonitoramentoService {
         final var analises = analiseRepository.buscarAnalisesCompativeis(
                 operacao.getPar(),
                 operacao.getIntervalo(),
-                dataMin,
-                dataMax,
+                Instant.ofEpochSecond(dataMin),
+                Instant.ofEpochSecond(dataMax),
                 params.getOrDefault(IndicadorKeys.KEY_RSI_CURTO, 0),
                 params.getOrDefault(IndicadorKeys.KEY_RSI_MEDIO, 0),
                 params.getOrDefault(IndicadorKeys.KEY_RSI_LONGO, 0),
@@ -114,7 +112,7 @@ public class MonitoramentoService {
             addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_D), time, a.getRsiEstocasticoD());
         }
 
-        final var eventos = buscarEventos(operacaoId, dataMin, dataMax);
+        final var eventos = buscarEventos(operacaoId);
         final var nomeEstrategia = operacao.getEstrategia() != null ? operacao.getEstrategia().getNome() : "Sem Estratégia";
 
         return new MonitoramentoDataDTO(operacao.getPar(), operacao.getIntervalo(), nomeEstrategia,
@@ -167,13 +165,9 @@ public class MonitoramentoService {
         return 0;
     }
 
-    private List<EventoChartDTO> buscarEventos(String operacaoId, Instant min, Instant max) {
-        if (min == null || max == null)
-            return Collections.emptyList();
-
+    private List<EventoChartDTO> buscarEventos(String operacaoId) {
         final var compras = compraRepository.findAllByOperacaoIdOrderByDataCriacaoDesc(operacaoId);
         final var eventos = new ArrayList<>(compras.stream()
-                .filter(c -> isBetween(c.getDataCompra(), min, max))
                 .map(c -> {
                     final var time = (c.getDataCandle() != null ? c.getDataCandle() : c.getDataCompra()).atZone(ZoneId.systemDefault()).toEpochSecond();
                     final var tipo = "COMPRA";
@@ -187,7 +181,6 @@ public class MonitoramentoService {
 
         final var vendas = vendaRepository.findAllByOperacaoIdOrderByDataCriacaoDesc(operacaoId);
         eventos.addAll(vendas.stream()
-                .filter(v -> isBetween(v.getDataVenda(), min, max))
                 .map(v -> {
                     final var time = (v.getDataCandle() != null ? v.getDataCandle() : v.getDataVenda()).atZone(ZoneId.systemDefault()).toEpochSecond();
                     final var tipo = "VENDA";
@@ -200,13 +193,6 @@ public class MonitoramentoService {
                 .toList());
 
         return eventos;
-    }
-
-    private boolean isBetween(Instant date, Instant min, Instant max) {
-        if (date == null)
-            return false;
-
-        return !date.isBefore(min) && !date.isAfter(max);
     }
 
     private void addPoint(List<IndicadorPointDTO> list, long time, BigDecimal value) {

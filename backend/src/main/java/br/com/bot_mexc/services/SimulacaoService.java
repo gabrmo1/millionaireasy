@@ -43,7 +43,7 @@ public class SimulacaoService {
         }
     }
 
-    private void executarCompraSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores, Instant dataCandle) {
+    private void executarCompraSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores, long dataCandle) {
         if (cache.posicionado()) {
             return;
         }
@@ -71,7 +71,7 @@ public class SimulacaoService {
         log.info("[SIMULAÇÃO] COMPRA Executada. Vol: {} @ {}. Saldo Restante: {}", volumeLiquido, precoAtual, novoSaldo);
     }
 
-    private void executarVendaSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores, Instant dataCandle) {
+    private void executarVendaSimulada(OperacaoCacheDTO cache, BigDecimal precoAtual, String snapshotIndicadores, long dataCandle) {
         if (!cache.posicionado())
             return;
 
@@ -100,36 +100,44 @@ public class SimulacaoService {
         log.info("[SIMULAÇÃO] VENDA Executada. Lucro: {}. Novo Saldo: {}", lucro, novoSaldo);
     }
 
-    private void salvarCompraNoBanco(String opId, BigDecimal preco, BigDecimal valor, BigDecimal vol, BigDecimal saldo, String snapshot, Instant dataCandle) {
-        final var opProxy = operacaoRepository.getReferenceById(opId);
+    private void salvarCompraNoBanco(String idOperacao, BigDecimal preco, BigDecimal valor, BigDecimal vol, BigDecimal saldo, String snapshot, long dataCandle) {
+        final var optionalOperacao = operacaoRepository.findById(idOperacao);
         final var compra = new Compra();
 
-        compra.setOperacao(opProxy);
-        compra.setValorMoeda(preco);
-        compra.setValorOperacao(valor);
-        compra.setVolume(vol);
-        compra.setDataCompra(DateUtils.agora());
-        compra.setDataCandle(dataCandle);
-        compra.setSnapshotIndicadores(snapshot);
+        if (optionalOperacao.isPresent()) {
+            final var operacao = optionalOperacao.get();
 
-        compraRepository.save(compra);
-        operacaoRepository.atualizarSaldo(opId, saldo);
+            compra.setOperacao(operacao);
+            compra.setValorMoeda(preco);
+            compra.setValorOperacao(valor);
+            compra.setVolume(vol);
+            compra.setDataCompra(DateUtils.agora());
+            compra.setDataCandle(Instant.ofEpochSecond(dataCandle));
+            compra.setSnapshotIndicadores(snapshot);
+
+            compraRepository.save(compra);
+            operacaoRepository.atualizarSaldo(idOperacao, saldo);
+        }
     }
 
-    private void salvarVendaNoBanco(String opId, BigDecimal precoCompra, BigDecimal precoVenda, BigDecimal lucro, BigDecimal saldo, String snapshot, Instant dataCandle) {
-        final var opProxy = operacaoRepository.getReferenceById(opId);
+    private void salvarVendaNoBanco(String idOperacao, BigDecimal precoCompra, BigDecimal precoVenda, BigDecimal lucro, BigDecimal saldo, String snapshot, long dataCandle) {
+        final var optionalOperacao = operacaoRepository.findById(idOperacao);
         final var venda = new Venda();
 
-        venda.setOperacao(opProxy);
-        venda.setValorCompra(precoCompra);
-        venda.setValorVenda(precoVenda);
-        venda.setLucro(lucro);
-        venda.setDataVenda(DateUtils.agora());
-        venda.setDataCandle(dataCandle);
-        venda.setSnapshotIndicadores(snapshot);
+        if (optionalOperacao.isPresent()) {
+            final var operacao = optionalOperacao.get();
 
-        vendaRepository.save(venda);
-        operacaoRepository.atualizarSaldo(opId, saldo);
+            venda.setOperacao(operacao);
+            venda.setValorCompra(precoCompra);
+            venda.setValorVenda(precoVenda);
+            venda.setLucro(lucro);
+            venda.setDataVenda(DateUtils.agora());
+            venda.setDataCandle(Instant.ofEpochSecond(dataCandle));
+            venda.setSnapshotIndicadores(snapshot);
+
+            vendaRepository.save(venda);
+            operacaoRepository.atualizarSaldo(idOperacao, saldo);
+        }
     }
 
     private BigDecimal calcularValorInvestimento(OperacaoCacheDTO cache, BigDecimal saldo) {

@@ -9,7 +9,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Map;
 
 @Slf4j
@@ -20,16 +19,16 @@ public class GestaoOrdemService {
     private final RabbitTemplate rabbitTemplate;
 
     @Async("asyncExecutor")
-    public void registrarIntencaoDeCompra(String idOperacao, String par, String intervalo, BigDecimal precoAtual, Map<String, BigDecimal> indicadores, Instant dataCandle) {
+    public void registrarIntencaoDeCompra(String idOperacao, String par, String intervalo, BigDecimal precoAtual, Map<String, BigDecimal> indicadores, long dataCandle) {
         enviarOrdem(idOperacao, par, intervalo, precoAtual, OrdemRequestDTO.TipoOrdem.BUY, indicadores, dataCandle);
     }
 
     @Async("asyncExecutor")
-    public void registrarIntencaoDeVenda(String idOperacao, String par, String intervalo, BigDecimal precoAtual, Map<String, BigDecimal> indicadores, Instant dataCandle) {
+    public void registrarIntencaoDeVenda(String idOperacao, String par, String intervalo, BigDecimal precoAtual, Map<String, BigDecimal> indicadores, long dataCandle) {
         enviarOrdem(idOperacao, par, intervalo, precoAtual, OrdemRequestDTO.TipoOrdem.SELL, indicadores, dataCandle);
     }
 
-    private void enviarOrdem(String idOperacao, String par, String intervalo, BigDecimal preco, OrdemRequestDTO.TipoOrdem tipo, Map<String, BigDecimal> indicadores, Instant dataCandle) {
+    private void enviarOrdem(String idOperacao, String par, String intervalo, BigDecimal preco, OrdemRequestDTO.TipoOrdem tipo, Map<String, BigDecimal> indicadores, long dataCandle) {
         final var routingKey = "order.execute." + tipo.name().toLowerCase() + "." + par;
         final var payload = new OrdemRequestDTO(idOperacao, par, intervalo, preco, tipo, indicadores, dataCandle);
 

@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -24,12 +25,6 @@ public class CandleService {
 
     private static final String PREFIXO_CANDLE_ATUAL = "mexc:candle:current:";
 
-    /**
-     * Verifica se houve uma virada de candle comparando o novo candle com o estado em cache.
-     * Atualiza o cache com o candle mais recente.
-     *
-     * @return Optional contendo o CandleDTO FECHADO se houver virada, ou Empty se for apenas atualização de preço.
-     */
     public Optional<CandleDTO> verificarViradaEAtualizarCache(CandleDTO novoCandle, String par, String intervalo) {
         final var key = PREFIXO_CANDLE_ATUAL + par + ":" + intervalo;
 
@@ -41,7 +36,7 @@ public class CandleService {
                 candleCacheado = objectMapper.convertValue(cachedObj, CandleDTO.class);
 
             // Se o candle que chegou tem data de fechamento posterior ao que está no cache, significa que o do cache fechou.
-            if (candleCacheado != null && novoCandle.dataFechamento().isAfter(candleCacheado.dataFechamento())) {
+            if (candleCacheado != null && novoCandle.dataFechamento() > candleCacheado.dataFechamento()) {
                 log.debug("Turnover detectado: Persistindo candle fechado {} para {}/{}.", candleCacheado.dataFechamento(), par, intervalo);
 
                 salvarNoBancoDireto(candleCacheado, par, intervalo);
@@ -66,8 +61,8 @@ public class CandleService {
     @Async("asyncExecutor")
     public void salvarNoBancoDireto(CandleDTO dto, String par, String intervalo) {
         try {
-            if (!repository.existsByParAndIntervaloAndDataFechamento(par, intervalo, dto.dataFechamento()))
-                repository.save(CandleUtils.converterDtoParaEntidade(dto, par, intervalo));
+            if (!repository.existsByParAndIntervaloAndDataFechamento(par, intervalo, Instant.ofEpochSecond(dto.dataFechamento())))
+                repository.save(CandleUtils.buildEntityFromDto(dto, par, intervalo));
         } catch (Exception e) {
             log.error("Falha ao salvar candle fechado no banco: {}", e.getMessage());
         }

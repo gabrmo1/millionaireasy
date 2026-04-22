@@ -1,7 +1,6 @@
 package br.com.bot_mexc.models.dtos;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Map;
 
 public record OrdemRequestDTO(
@@ -11,7 +10,7 @@ public record OrdemRequestDTO(
         BigDecimal preco,
         TipoOrdem tipo,
         Map<String, BigDecimal> indicadores,
-        Instant dataCandle
+        long dataCandle
 ) {
     public enum TipoOrdem {
         BUY, SELL

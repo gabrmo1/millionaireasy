@@ -1,4 +1,4 @@
-package br.com.bot_mexc.services;
+package br.com.bot_mexc.services.mexc;
 
 import br.com.bot_mexc.models.entities.Operacao;
 import br.com.bot_mexc.models.enums.StatusOperacoes;

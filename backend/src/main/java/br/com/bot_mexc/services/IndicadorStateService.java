@@ -28,7 +28,7 @@ public class IndicadorStateService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final CandleRepository candleRepository;
-    private final MexcService mexcService;
+    private final MexcConnectionService mexcConnectionService;
     private final ObjectMapper objectMapper;
 
     private static final String STATE_KEY_PREFIX = "mexc:indicador:state:";
@@ -43,7 +43,7 @@ public class IndicadorStateService {
         initializeStateFromHistory(par, intervalo, configs);
     }
 
-    public EstadoIndicadoresDTO getOrInitializeState(String par, String intervalo, Set<IndicadorConfig> configs, Instant currentCandleTime) {
+    public EstadoIndicadoresDTO getOrInitializeState(String par, String intervalo, Set<IndicadorConfig> configs, long currentCandleTime) {
         final var stateKey = getStateKey(par, intervalo);
         EstadoIndicadoresDTO state = null;
 
@@ -193,14 +193,17 @@ public class IndicadorStateService {
         final var dbCandles = candleRepository.findTopCandlesDesc(par, intervalo, org.springframework.data.domain.PageRequest.of(0, 300));
         if (dbCandles.size() >= 300) {
             dbCandles.sort(Comparator.comparing(br.com.bot_mexc.models.entities.Candle::getDataFechamento));
-            return dbCandles.stream().map(CandleUtils::converterEntidadeParaDto).toList();
+            return dbCandles.stream().map(CandleUtils::buildDtoFromEntity).toList();
         }
-        return mexcService.consultarCandles(par, intervalo, String.valueOf(300));
+        return mexcConnectionService.consultarCandles(par, intervalo, String.valueOf(300));
     }
 
-    private boolean isStateStale(EstadoIndicadoresDTO state, Instant currentCandleTime, String intervalo) {
-        final var minutesDiff = Duration.between(state.ultimaDataFechamento(), currentCandleTime).toMinutes();
+    private boolean isStateStale(EstadoIndicadoresDTO state, long currentCandleTime, String intervalo) {
+        final var instantTempoAtualCandle = Instant.ofEpochSecond(currentCandleTime);
+        final var instantUltimaDataFechamento = Instant.ofEpochSecond(state.ultimaDataFechamento());
+        final var minutesDiff = Duration.between(instantUltimaDataFechamento, instantTempoAtualCandle).toMinutes();
         final var intervalMinutes = parseInterval(intervalo);
+
         return minutesDiff > (intervalMinutes * 2);
     }
 

@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-public class MexcService {
+public class MexcConnectionService {
 
     private final MexcIntegration integration;
     private final RedisTemplate<String, Object> redisTemplate;
@@ -27,14 +27,14 @@ public class MexcService {
     private static final Set<String> STABLECOINS = Set.of("USDT", "USDC", "EUR");
     private static final String STABLECOIN_PAIRS_CACHE_KEY = "stablecoinPairs";
 
-    public MexcService(MexcIntegration integration, RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
+    public MexcConnectionService(MexcIntegration integration, RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
         this.integration = integration;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
     }
 
     public List<CandleDTO> consultarCandles(String symbol, String interval, String limit) {
-        return CandleUtils.montarCandles(integration.obterCandles(symbol, interval, limit));
+        return CandleUtils.buildListCandleDtoFromMexcResponse(integration.obterCandles(symbol, interval, limit));
     }
 
     public Page<SymbolInfoDTO> getStablecoinPairsPaginated(String quoteAsset, String searchTerm, Pageable pageable) {
