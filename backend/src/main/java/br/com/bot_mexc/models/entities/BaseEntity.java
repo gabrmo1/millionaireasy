@@ -8,7 +8,7 @@ import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @MappedSuperclass
@@ -22,7 +22,7 @@ public class BaseEntity {
     String id;
 
     @Column(name = "data_criacao")
-    LocalDateTime dataCriacao;
+    Instant dataCriacao;
 
     @Column(name = "id_usuario", nullable = false, updatable = false, length = 36)
     String idUsuario;

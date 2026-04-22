@@ -6,7 +6,6 @@ import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.dtos.ContextoAnaliseDTO;
 import br.com.bot_mexc.models.dtos.OperacaoCacheDTO;
 import br.com.bot_mexc.models.dtos.mexc.EventoCandleMexcDTO;
-import br.com.bot_mexc.models.entities.Analise;
 import br.com.bot_mexc.models.entities.IndicadorConfig;
 import br.com.bot_mexc.services.*;
 import jakarta.validation.ValidationException;
@@ -17,12 +16,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -40,9 +36,7 @@ public class KlineAnalysisConsumer {
     private final AnaliseService analiseService;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final ZoneId ZONA_BRASIL = ZoneId.of("America/Sao_Paulo");
     private static final String PREFIXO_THROTTLE = "mexc:analysis:throttle:";
-    private static final long TEMPO_THROTTLE_SEGUNDOS = 3;
 
     @RabbitListener(queues = RabbitMQConfig.KLINE_ANALYSIS_QUEUE)
     public void consumirMensagemKline(EventoCandleMexcDTO evento) {
@@ -95,6 +89,7 @@ public class KlineAnalysisConsumer {
         indicadorStateService.advanceState(contexto.getPar(), contexto.getIntervalo(), configsIndicadores, contexto.candle());
     }
 
+    //TODO: Verificar por quê o horário do salvamento está diferente do horário do candle
     private void salvarAnalisesParaMonitoramento(ContextoAnaliseDTO contexto, Map<String, BigDecimal> indicadoresCalculados) {
         var assinaturasProcessadas = new HashSet<>();
 
@@ -133,18 +128,20 @@ public class KlineAnalysisConsumer {
 //    }
 
     private void avaliarEstrategiasEExecutarOrdens(List<OperacaoCacheDTO> operacoes, Map<String, BigDecimal> indicadores, CandleDTO candle) {
+        final var dataAberturaCandle = candle.dataAbertura();
+
         operacoes.forEach(operacao -> {
             if (Boolean.TRUE.equals(operacao.posicionado())) {
                 boolean sinalVenda = avaliacaoCondicaoService.avaliarCondicoesVenda(operacao.condicoesVenda(), indicadores);
                 if (sinalVenda) {
                     log.info("Sinal de VENDA detectado para Operação ID: {}", operacao.id());
-                    gestaoOrdemService.registrarIntencaoDeVenda(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento(), indicadores);
+                    gestaoOrdemService.registrarIntencaoDeVenda(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento(), indicadores, dataAberturaCandle);
                 }
             } else {
                 boolean sinalCompra = avaliacaoCondicaoService.avaliarCondicoesCompra(operacao.condicoesCompra(), indicadores);
                 if (sinalCompra) {
                     log.info("Sinal de COMPRA detectado para Operação ID: {}", operacao.id());
-                    gestaoOrdemService.registrarIntencaoDeCompra(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento(), indicadores);
+                    gestaoOrdemService.registrarIntencaoDeCompra(operacao.id(), operacao.par(), operacao.intervalo(), candle.valorFechamento(), indicadores, dataAberturaCandle);
                 }
             }
         });
@@ -152,20 +149,14 @@ public class KlineAnalysisConsumer {
 
     private CandleDTO converterEventoParaCandle(EventoCandleMexcDTO evento) {
         return new CandleDTO(
-                Instant.ofEpochSecond(evento.inicioJanela()).atZone(ZONA_BRASIL).toLocalDateTime(),
-                Instant.ofEpochSecond(evento.fimJanela()).atZone(ZONA_BRASIL).toLocalDateTime(),
+                evento.inicioJanela(),
+                evento.fimJanela(),
                 evento.precoAbertura(),
                 evento.precoFechamento(),
                 evento.minima(),
                 evento.maxima(),
                 evento.volume()
         );
-    }
-
-    private boolean estaEmPeriodoDeThrottle(String par, String intervalo) {
-        var chave = PREFIXO_THROTTLE + par + ":" + intervalo;
-        var bloqueioAdquirido = redisTemplate.opsForValue().setIfAbsent(chave, "1", TEMPO_THROTTLE_SEGUNDOS, TimeUnit.SECONDS);
-        return Boolean.FALSE.equals(bloqueioAdquirido);
     }
 
     private void pausarProcessamentoParaParInativo(String par, String intervalo) {

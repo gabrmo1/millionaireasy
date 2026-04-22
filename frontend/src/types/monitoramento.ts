@@ -23,9 +23,9 @@ export interface IndicadorPointDTO {
 export interface MonitoramentoDataDTO {
     par: string;
     intervalo: string;
+    nomeEstrategia: string;
+    lucroTotal: number;
     candles: CandleChartDTO[];
     eventos: EventoChartDTO[];
-
-    // Chave: Nome do indicador (ex: "RSI_Curto", "EMA"), Valor: Lista de pontos
     indicadores: Record<string, IndicadorPointDTO[]>;
 }

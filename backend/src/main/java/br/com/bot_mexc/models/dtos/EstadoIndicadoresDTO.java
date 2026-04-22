@@ -5,14 +5,13 @@ import lombok.Builder;
 import lombok.With;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Builder
 @With
 public record EstadoIndicadoresDTO(
 
-        LocalDateTime ultimaDataFechamento,
+        Long ultimaDataFechamento,
 
         BigDecimal ultimoPrecoFechamento,
 

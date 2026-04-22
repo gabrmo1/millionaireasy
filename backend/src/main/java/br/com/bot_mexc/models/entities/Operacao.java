@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -21,10 +21,10 @@ public class Operacao extends BaseEntity {
     StatusOperacoes status;
 
     @Column(name = "data_inicio")
-    LocalDateTime dataInicio;
+    Instant dataInicio;
 
     @Column(name = "data_fim")
-    LocalDateTime dataFim;
+    Instant dataFim;
 
     @Column(name = "par", length = 20, nullable = false)
     String par;

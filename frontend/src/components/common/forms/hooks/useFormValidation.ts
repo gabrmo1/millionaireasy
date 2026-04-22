@@ -1,85 +1,77 @@
-import { useState, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import type { FormMetadata } from '../../../../types/formMetadata';
 
 export const useFormValidation = (
     metadata: FormMetadata,
     formData: Record<string, any>,
-    customValidator?: (formData: Record<string, any>) => Record<string, string | null>
+    customValidator?: (data: Record<string, any>) => Record<string, string | null>
 ) => {
     const [errors, setErrors] = useState<Record<string, string | null>>({});
-    const [stepErrors, setStepErrors] = useState<boolean[]>(new Array(metadata.steps.length).fill(false));
 
-    const fieldToStepMap = useMemo(() => {
-        const map = new Map<string, number>();
-        metadata.steps.forEach((step, index) => {
-            step.rows.forEach(row => {
-                row.formFields?.forEach(field => map.set(field.field, index));
-            });
-        });
-        return map;
-    }, [metadata]);
+    const validate = useCallback(() => {
+        const newErrors: Record<string, string | null> = {};
+        let isValid = true;
 
-    const validate = (): { isValid: boolean, allErrors: Record<string, string | null> } => {
-        const newTotalErrors: Record<string, string | null> = {};
-        const newStepErrors = new Array(metadata.steps.length).fill(false);
-
-        metadata.steps.forEach((step, index) => {
-            let stepHasError = false;
+        metadata.steps.forEach(step => {
             step.rows.forEach(row => {
                 row.formFields?.forEach(field => {
+                    if (field.hidden) return;
+
                     const value = formData[field.field];
-                    let hasError = false;
-                    if (!field.nullable && (value === undefined || value === null || value === '')) {
-                        newTotalErrors[field.field] = `${field.label} é obrigatório.`;
-                        hasError = true;
+
+                    if (!field.nullable) {
+                        if (value === undefined || value === '' || value === null) {
+                            newErrors[field.field] = 'Este campo é obrigatório';
+                            isValid = false;
+                        } else if (Array.isArray(value) && value.length === 0) {
+                            newErrors[field.field] = 'Este campo é obrigatório';
+                            isValid = false;
+                        }
                     }
-                    if (field.maxLength && String(value || '').length > field.maxLength) {
-                        newTotalErrors[field.field] = `O campo deve ter no máximo ${field.maxLength} caracteres.`;
-                        hasError = true;
+
+                    if (field.validateMatches) {
+                        const valueToMatch = formData[field.validateMatches];
+                        if (value && valueToMatch && value !== valueToMatch) {
+                            newErrors[field.field] = 'Os valores não coincidem';
+                            isValid = false;
+                        }
                     }
-                    if (field.minValue !== undefined && value !== '' && Number(value) < field.minValue) {
-                        newTotalErrors[field.field] = `O valor deve ser no mínimo ${field.minValue}.`;
-                        hasError = true;
-                    }
-                    if (field.maxValue !== undefined && value !== '' && Number(value) > field.maxValue) {
-                        newTotalErrors[field.field] = `O valor deve ser no máximo ${field.maxValue}.`;
-                        hasError = true;
-                    }
-                    if (hasError) stepHasError = true;
                 });
             });
-            if (stepHasError) newStepErrors[index] = true;
         });
 
-        const customErrors = customValidator ? customValidator(formData) : {};
-        Object.assign(newTotalErrors, customErrors);
-
-        Object.keys(customErrors).forEach(fieldKey => {
-            if (fieldToStepMap.has(fieldKey)) {
-                const stepIndex = fieldToStepMap.get(fieldKey)!;
-                newStepErrors[stepIndex] = true;
-            } else {
-                const stepTitleMap: { [key: string]: string } = {
-                    'indicador': 'Indicadores',
-                    'condicao_compra': 'Regras de compra',
-                    'condicao_venda': 'Regras de Venda',
-                };
-                for (const prefix in stepTitleMap) {
-                    if (fieldKey.startsWith(prefix)) {
-                        const stepIndex = metadata.steps.findIndex(s => s.title === stepTitleMap[prefix]);
-                        if (stepIndex !== -1) newStepErrors[stepIndex] = true;
-                        break;
-                    }
+        if (customValidator) {
+            const customErrors = customValidator(formData);
+            Object.keys(customErrors).forEach(key => {
+                if (customErrors[key]) {
+                    newErrors[key] = customErrors[key];
+                    isValid = false;
                 }
-            }
-        });
+            });
+        }
 
-        setErrors(newTotalErrors);
-        setStepErrors(newStepErrors);
+        setErrors(newErrors);
+        return { isValid, errors: newErrors };
+    }, [formData, metadata, customValidator]);
 
-        const isValid = Object.values(newTotalErrors).every(e => e === null);
-        return { isValid, allErrors: newTotalErrors };
+    const stepErrors: Record<number, boolean> = {};
+    metadata.steps.forEach((step, index) => {
+        // Coleta todos os campos deste step
+        const stepFields = new Set<string>();
+        step.rows.forEach(row =>
+            row.formFields?.forEach(field => stepFields.add(field.field))
+        );
+
+        const hasError = Object.keys(errors).some(key => stepFields.has(key) && errors[key]);
+        if (hasError) {
+            stepErrors[index] = true;
+        }
+    });
+
+    return {
+        errors,
+        stepErrors,
+        setErrors,
+        validate
     };
-
-    return { errors, stepErrors, setErrors, validate };
 };

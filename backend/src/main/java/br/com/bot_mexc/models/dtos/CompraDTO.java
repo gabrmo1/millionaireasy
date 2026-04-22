@@ -1,13 +1,14 @@
 package br.com.bot_mexc.models.dtos;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record CompraDTO(
         String id,
-        LocalDateTime dataCompra,
+        Instant dataCompra,
         BigDecimal valorOperacao,
         BigDecimal valorMoeda,
         BigDecimal volume,
         String snapshotIndicadores
-) {}
+) {
+}

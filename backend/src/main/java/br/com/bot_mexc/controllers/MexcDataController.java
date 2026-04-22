@@ -2,7 +2,7 @@ package br.com.bot_mexc.controllers;
 
 import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.dtos.mexc.SymbolInfoDTO;
-import br.com.bot_mexc.services.MexcService;
+import br.com.bot_mexc.services.MexcConnectionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -18,22 +18,22 @@ import java.util.Set;
 @RequestMapping("/v1/mexc-data")
 public class MexcDataController {
 
-    private final MexcService mexcService;
+    private final MexcConnectionService mexcConnectionService;
 
-    public MexcDataController(MexcService mexcService) {
-        this.mexcService = mexcService;
+    public MexcDataController(MexcConnectionService mexcConnectionService) {
+        this.mexcConnectionService = mexcConnectionService;
     }
 
     @GetMapping("/stablecoin-pairs")
     public ResponseEntity<Page<SymbolInfoDTO>> getStablecoinPairs(@RequestParam(required = false) String quoteAsset,
                                                                   @RequestParam(required = false) String searchTerm,
                                                                   Pageable pageable) {
-        return ResponseEntity.ok(mexcService.getStablecoinPairsPaginated(quoteAsset, searchTerm, pageable));
+        return ResponseEntity.ok(mexcConnectionService.getStablecoinPairsPaginated(quoteAsset, searchTerm, pageable));
     }
 
     @GetMapping("/stablecoins")
     public ResponseEntity<Set<String>> getStablecoins() {
-        return ResponseEntity.ok(mexcService.getStablecoins());
+        return ResponseEntity.ok(mexcConnectionService.getStablecoins());
     }
 
     @GetMapping("/candles")
@@ -46,6 +46,6 @@ public class MexcDataController {
         int limitInt = Integer.parseInt(limit);
         if (limitInt > 2000) limit = "2000";
 
-        return ResponseEntity.ok(mexcService.consultarCandles(symbol, interval, limit));
+        return ResponseEntity.ok(mexcConnectionService.consultarCandles(symbol, interval, limit));
     }
 }

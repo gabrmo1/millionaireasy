@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     TextField,
     InputAdornment,
@@ -11,9 +11,12 @@ import {
     FormControlLabel,
     Checkbox
 } from '@mui/material';
+import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import dayjs, { Dayjs } from 'dayjs';
 import type { FormFieldMetadata } from '../../../types/formMetadata';
 import { formatLeadingZeros } from "../../../utils/inputFormatters.ts";
+import ArrayFieldRenderer from './ArrayFieldRenderer';
 
 interface FormFieldRendererProps {
     field: FormFieldMetadata;
@@ -24,17 +27,40 @@ interface FormFieldRendererProps {
 
 const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, errors, handleChange }) => {
     const [showPassword, setShowPassword] = useState(false);
+    const parentValue = field.dependsOn ? formData[field.dependsOn] : undefined;
+    const getOptions = (): string[] => {
+        if (!field.dependsOn) {
+            return field.options || [];
+        }
+        if (parentValue === undefined || parentValue === '' || parentValue === null) {
+            return [];
+        }
+        const parentKey = String(parentValue);
+        return field.dependentOptions?.[parentKey] || [];
+    };
+
+    const activeOptions = getOptions();
+
+    useEffect(() => {
+        if (field.dependsOn && formData[field.field]) {
+            const currentOpts = getOptions();
+            const currentValue = formData[field.field];
+            if (!currentOpts.includes(currentValue)) {
+                handleChange(field.field, '');
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [parentValue, field.dependsOn, field.dependentOptions]);
 
     if (field.hidden) return null;
 
     const commonProps = {
         label: field.label,
         name: field.field,
-        required: !field.nullable,
-        error: !!errors[field.field],
-        size: 'small' as const,
-        fullWidth: true,
     };
+
+    const hasError = !!errors[field.field];
+    const errorMessage = errors[field.field] || field.description || ' ';
 
     const processDynamicText = (text: string): string => {
         return text.replace(/\${(.*?)}/g, (_, key) => formData[key] || '');
@@ -52,14 +78,86 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
     ) : null;
 
     switch (field.type) {
+        case 'array':
+            return (
+                <ArrayFieldRenderer
+                    field={field}
+                    value={formData[field.field]}
+                    onChange={(newValue) => handleChange(field.field, newValue)}
+                    error={errors[field.field]}
+                />
+            );
+
+        case 'enum':
+            return (
+                <FormControl
+                    error={hasError}
+                    fullWidth
+                    size="small"
+                    required={!field.nullable}
+                    disabled={!!field.dependsOn && !parentValue}
+                >
+                    <InputLabel>{field.label}</InputLabel>
+                    <Select
+                        label={field.label}
+                        value={formData[field.field] ?? ''}
+                        onChange={(e) => handleChange(field.field, e.target.value)}
+                    >
+                        {activeOptions.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+                    </Select>
+                    <FormHelperText>{errorMessage}</FormHelperText>
+                </FormControl>
+            );
+
+        case 'date':
+            return (
+                <DatePicker
+                    {...commonProps}
+                    value={formData[field.field] ? dayjs(formData[field.field]) : null}
+                    onChange={(newValue: Dayjs | null) => handleChange(field.field, newValue ? newValue.toISOString() : null)}
+                    slotProps={{
+                        textField: {
+                            size: 'small',
+                            fullWidth: true,
+                            error: hasError,
+                            helperText: errorMessage,
+                            required: !field.nullable
+                        }
+                    }}
+                />
+            );
+
+        case 'datetime':
+            return (
+                <DateTimePicker
+                    {...commonProps}
+                    value={formData[field.field] ? dayjs(formData[field.field]) : null}
+                    onChange={(newValue: Dayjs | null) => handleChange(field.field, newValue ? newValue.toISOString() : null)}
+                    slotProps={{
+                        textField: {
+                            size: 'small',
+                            fullWidth: true,
+                            error: hasError,
+                            helperText: errorMessage,
+                            required: !field.nullable
+                        }
+                    }}
+                    ampm={false}
+                />
+            );
+
         case 'password':
             return (
                 <TextField
                     {...commonProps}
+                    required={!field.nullable}
+                    error={hasError}
+                    size="small"
+                    fullWidth
                     type={showPassword ? 'text' : 'password'}
                     value={formData[field.field] ?? ''}
                     onChange={(e) => handleChange(field.field, e.target.value)}
-                    helperText={errors[field.field] || field.description || ' '}
+                    helperText={errorMessage}
                     InputProps={{
                         endAdornment: (
                             <InputAdornment position="end">
@@ -75,35 +173,27 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                     }}
                 />
             );
+
         case 'double':
         case 'integer':
             return (
                 <TextField
                     {...commonProps}
+                    required={!field.nullable}
+                    error={hasError}
+                    size="small"
+                    fullWidth
                     type="number"
                     value={formData[field.field] ?? ''}
                     onChange={(e) => handleNumericChange(e.target.value)}
-                    helperText={errors[field.field] || processDynamicText(field.description || ' ')}
+                    helperText={processDynamicText(errorMessage)}
                     inputProps={{ min: field.minValue, max: field.maxValue }}
                     InputProps={{
                         [field.inputAdornment?.position === 'start' ? 'startAdornment' : 'endAdornment']: adornment
                     }}
                 />
             );
-        case 'enum':
-            return (
-                <FormControl {...commonProps}>
-                    <InputLabel>{field.label}</InputLabel>
-                    <Select
-                        label={field.label}
-                        value={formData[field.field] ?? ''}
-                        onChange={(e) => handleChange(field.field, e.target.value)}
-                    >
-                        {field.options?.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
-                    </Select>
-                    <FormHelperText>{errors[field.field] || field.description || ' '}</FormHelperText>
-                </FormControl>
-            );
+
         case 'boolean':
             return (
                 <FormControlLabel
@@ -118,15 +208,20 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({ field, formData, 
                     label={field.label}
                 />
             );
+
         case 'string':
         default:
             return (
                 <TextField
                     {...commonProps}
+                    required={!field.nullable}
+                    error={hasError}
+                    size="small"
+                    fullWidth
                     type="text"
                     value={formData[field.field] ?? ''}
                     onChange={(e) => handleChange(field.field, e.target.value)}
-                    helperText={errors[field.field] || field.description || ' '}
+                    helperText={errorMessage}
                 />
             );
     }

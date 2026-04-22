@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -17,12 +17,15 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 public class Venda extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_operacao", nullable = false)
     Operacao operacao;
 
     @Column(name = "data_venda", nullable = false)
-    LocalDateTime dataVenda;
+    Instant dataVenda;
+
+    @Column(name = "data_candle")
+    Instant dataCandle;
 
     @Column(name = "valor_compra", nullable = false)
     BigDecimal valorCompra;

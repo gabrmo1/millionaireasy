@@ -9,7 +9,8 @@ public record OrdemRequestDTO(
         String intervalo,
         BigDecimal preco,
         TipoOrdem tipo,
-        Map<String, BigDecimal> indicadores
+        Map<String, BigDecimal> indicadores,
+        long dataCandle
 ) {
     public enum TipoOrdem {
         BUY, SELL

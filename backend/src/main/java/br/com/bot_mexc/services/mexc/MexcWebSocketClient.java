@@ -1,8 +1,6 @@
-package br.com.bot_mexc.services;
+package br.com.bot_mexc.services.mexc;
 
 import br.com.bot_mexc.configs.RabbitMQConfig;
-import br.com.bot_mexc.models.dtos.mexc.EventoCandleMexcDTO;
-import br.com.bot_mexc.proto.PublicSpotKlineV3Api;
 import br.com.bot_mexc.proto.PushDataV3ApiWrapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import jakarta.websocket.*;
@@ -12,7 +10,6 @@ import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -20,6 +17,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static br.com.bot_mexc.utils.CandleUtils.mapProtoToDto;
 
 @Slf4j
 public class MexcWebSocketClient extends Endpoint {
@@ -184,20 +183,5 @@ public class MexcWebSocketClient extends Endpoint {
         } catch (Exception e) {
             log.error("[WSClient-{}] Erro genérico processando mensagem: {}", id, e.getMessage());
         }
-    }
-
-    private EventoCandleMexcDTO mapProtoToDto(PublicSpotKlineV3Api proto, String symbol) {
-        return new EventoCandleMexcDTO(
-                symbol,
-                proto.getInterval(),
-                proto.getWindowStart(),
-                proto.getWindowEnd(),
-                new BigDecimal(proto.getOpeningPrice()),
-                new BigDecimal(proto.getClosingPrice()),
-                new BigDecimal(proto.getHighestPrice()),
-                new BigDecimal(proto.getLowestPrice()),
-                new BigDecimal(proto.getVolume()),
-                new BigDecimal(proto.getAmount())
-        );
     }
 }

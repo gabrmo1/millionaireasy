@@ -27,7 +27,7 @@ public class CalculoUtils {
             ema = precoFechamento.multiply(multiplicador).add(ema.multiply(BigDecimal.ONE.subtract(multiplicador)));
         }
 
-        return ema;
+        return ema.setScale(8, RoundingMode.HALF_UP);
     }
 
     public static BigDecimal calcularEmaIncremental(BigDecimal precoAtual, BigDecimal emaAnterior, int periodo) {

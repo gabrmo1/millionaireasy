@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Script para COPIAR projetos de uma pasta de origem para a pasta atual,
-# EXCLUINDO arquivos e pastas de build, dependências e configurações de IDE.
+# EXCLUINDO arquivos e pastas de build, dependências, configurações de IDE
+# E ARQUIVOS IRRELEVANTES para análise do código fonte (imagens, boilerplate, etc).
 #
 # Ele utiliza 'tar' para criar um fluxo de dados (stream) que é descompactado
 # no destino, evitando a transferência de dados desnecessários. Funciona no Git Bash padrão.
 #
 # --- ATUALIZACAO ---
 # Esta versao agora REMOVE o diretorio de destino do projeto se ele ja existir,
-# garantindo uma copia 100% limpa e espelhada da origem.
+# garantindo uma copia 100% limpa e espelhada da origem, focada apenas no código útil.
 
 # --- Configuração ---
 PASTA_ORIGEM=".."
@@ -45,6 +46,16 @@ itens_a_excluir=(
   ".idea" ".vscode" ".vs"
   # Arquivos de sistema operacional
   ".DS_Store"
+
+  # --- NOVOS ARQUIVOS IGNORADOS (Irrelevantes para análise de código) ---
+  # Imagens e arquivos binários
+  "*.svg" "*.png" "*.ico" "*.jpg" "*.jpeg" "*.gif"
+  # Metadados e documentação boilerplate
+  "robots.txt" "manifest.json" "LICENSE"
+  # Arquivos de setup vazios ou de tipagem padrão
+  "vite-env.d.ts" "setupTests.ts"
+  # Regras de ignorados (Git e Docker)
+  ".gitignore" ".dockerignore"
 )
 
 tar_exclude_opts=()
