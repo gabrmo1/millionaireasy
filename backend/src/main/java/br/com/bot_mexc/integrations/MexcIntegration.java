@@ -16,7 +16,9 @@ public interface MexcIntegration {
     @GetMapping("/api/v3/klines")
     String obterCandles(@RequestParam("symbol") String symbol,
                         @RequestParam("interval") String interval,
-                        @RequestParam("limit") String limit);
+                        @RequestParam("limit") String limit,
+                        @RequestParam(value = "startTime", required = false) Long startTime,
+                        @RequestParam(value = "endTime", required = false) Long endTime);
 
     @GetMapping("/api/v3/ticker/price")
     ValorMoedaDTO obterValorAtualMoeda(@RequestParam("symbol") String symbol);

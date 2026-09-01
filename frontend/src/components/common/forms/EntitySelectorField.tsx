@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TextField, Button, InputAdornment } from '@mui/material';
 import EntitySelectorModal from '../modals/EntitySelectorModal';
-import type {BaseEntity} from '../../../types/common';
+import type { BaseEntity } from '../../../types/common';
 
 interface EntitySelectorFieldProps<T extends BaseEntity> {
     label: string;
@@ -10,6 +10,7 @@ interface EntitySelectorFieldProps<T extends BaseEntity> {
     fetcher: () => Promise<T[]>;
     displayAttribute: keyof T;
     onChange: (id: string | null) => void;
+    onCreateNew?: () => void; // <--- 1. NOVA PROP ADICIONADA AQUI
     required?: boolean;
     error?: boolean;
     helperText?: string | null;
@@ -24,6 +25,7 @@ export default function EntitySelectorField<T extends BaseEntity>({
                                                                       fetcher,
                                                                       displayAttribute,
                                                                       onChange,
+                                                                      onCreateNew, // <--- 2. DESESTRUTURANDO A PROP
                                                                       required = false,
                                                                       error = false,
                                                                       helperText = null,
@@ -71,7 +73,6 @@ export default function EntitySelectorField<T extends BaseEntity>({
                     ),
                 }}
             />
-
             {isModalOpen && (
                 <EntitySelectorModal
                     open={isModalOpen}
@@ -80,6 +81,7 @@ export default function EntitySelectorField<T extends BaseEntity>({
                     displayAttribute={displayAttribute}
                     onClose={() => setIsModalOpen(false)}
                     onSelect={handleSelect}
+                    onCreateNew={onCreateNew}
                 />
             )}
         </>

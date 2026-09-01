@@ -1,6 +1,6 @@
 import api from './api';
 import type { CriarOperacaoDTO, Operacao, HistoricoOperacao } from '../types/operacao';
-import type { MonitoramentoDataDTO } from '../types/monitoramento'; // <--- Importe o DTO aqui
+import type { MonitoramentoDataDTO, RelatorioDesempenhoDTO } from '../types/monitoramento';
 
 const BASE_URL = '/v1/operacoes';
 
@@ -44,4 +44,12 @@ export const iniciarOperacao = async (id: string): Promise<void> => {
 
 export const pararOperacao = async (id: string): Promise<void> => {
     await api.post(`${BASE_URL}/${id}/stop`);
+};
+
+export const getRelatorioDesempenho = async (id: string, signal?: AbortSignal): Promise<RelatorioDesempenhoDTO> => {
+    const response = await api.get<RelatorioDesempenhoDTO>(
+        `${BASE_URL}/${id}/relatorio-desempenho`,
+        { signal }
+    );
+    return response.data;
 };

@@ -11,18 +11,24 @@ export const StatusChipRenderer = (params: GridRenderCellParams) => {
     let color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' = 'default';
 
     switch (status) {
+        case 'AGUARDANDO':
+            color = 'info';
+            break;
         case StatusOperacoes.EM_ANDAMENTO:
             color = 'success';
             break;
         case StatusOperacoes.PARADO:
             color = 'warning';
             break;
+        case 'ERRO':
+            color = 'error';
+            break;
         case StatusOperacoes.FINALIZADO:
             color = 'default';
             break;
     }
 
-    return <Chip label={status} color={color} size="small" />;
+    return <Chip label={status} color={color} size="small" sx={{ fontWeight: 'bold' }} />;
 };
 
 export const BooleanRenderer = (params: GridRenderCellParams) => {

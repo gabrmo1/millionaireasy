@@ -14,4 +14,5 @@ public interface VendaRepository extends JpaRepository<Venda, String> {
 
     List<Venda> findAllByOperacaoIdOrderByDataCriacaoDesc(String idOperacao);
 
+    List<Venda> findAllByOperacaoIdOrderByDataVendaAsc(String operacaoId);
 }

@@ -34,7 +34,7 @@ public class MexcConnectionService {
     }
 
     public List<CandleDTO> consultarCandles(String symbol, String interval, String limit) {
-        return CandleUtils.buildListCandleDtoFromMexcResponse(integration.obterCandles(symbol, interval, limit));
+        return CandleUtils.buildListCandleDtoFromMexcResponse(integration.obterCandles(symbol, interval, limit, null, null));
     }
 
     public Page<SymbolInfoDTO> getStablecoinPairsPaginated(String quoteAsset, String searchTerm, Pageable pageable) {

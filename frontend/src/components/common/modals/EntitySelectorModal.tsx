@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Modal, Box, Typography, List, ListItem, ListItemButton, ListItemText, Paper, CircularProgress } from '@mui/material';
-import type {BaseEntity} from '../../../types/common';
+import { Modal, Box, Typography, List, ListItem, ListItemButton, ListItemText, Paper, CircularProgress, Button, Divider } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import type { BaseEntity } from '../../../types/common';
 
 interface EntitySelectorModalProps<T extends BaseEntity> {
     open: boolean;
@@ -9,6 +10,7 @@ interface EntitySelectorModalProps<T extends BaseEntity> {
     displayAttribute: keyof T;
     onClose: () => void;
     onSelect: (entity: T) => void;
+    onCreateNew?: () => void; // Nova prop
 }
 
 const style = {
@@ -24,12 +26,7 @@ const style = {
 };
 
 export default function EntitySelectorModal<T extends BaseEntity>({
-                                                                      open,
-                                                                      title,
-                                                                      fetcher,
-                                                                      displayAttribute,
-                                                                      onClose,
-                                                                      onSelect,
+                                                                      open, title, fetcher, displayAttribute, onClose, onSelect, onCreateNew
                                                                   }: EntitySelectorModalProps<T>) {
     const [entities, setEntities] = useState<T[]>([]);
     const [loading, setLoading] = useState(false);
@@ -44,16 +41,16 @@ export default function EntitySelectorModal<T extends BaseEntity>({
         }
     }, [open, fetcher, title]);
 
-    const handleSelectEntity = (entity: T) => {
-        onSelect(entity);
-        onClose();
-    };
+    // const handleSelectEntity = (entity: T) => {
+    //     onSelect(entity);
+    //     onClose();
+    // };
 
     return (
         <Modal open={open} onClose={onClose}>
             <Box sx={style}>
-                <Typography variant="h6" component="h2">{title}</Typography>
-                <Paper sx={{ maxHeight: 300, overflow: 'auto', mt: 2 }}>
+                <Typography variant="h6" component="h2" gutterBottom>{title}</Typography>
+                <Paper sx={{ maxHeight: 300, overflow: 'auto', mt: 1 }}>
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                             <CircularProgress />
@@ -62,17 +59,25 @@ export default function EntitySelectorModal<T extends BaseEntity>({
                         <List>
                             {entities.map((entity) => (
                                 <ListItem key={entity.id} disablePadding>
-                                    <ListItemButton onClick={() => handleSelectEntity(entity)}>
-                                        <ListItemText
-                                            primary={entity[displayAttribute]}
-                                            secondary={`ID: ${entity.id}`}
-                                        />
+                                    <ListItemButton onClick={() => { onSelect(entity); onClose(); }}>
+                                        <ListItemText primary={entity[displayAttribute] as React.ReactNode} secondary={`ID: ${entity.id}`} />
                                     </ListItemButton>
                                 </ListItem>
                             ))}
+                            {entities.length === 0 && <ListItem><ListItemText secondary="Nenhum item encontrado." /></ListItem>}
                         </List>
                     )}
                 </Paper>
+
+                {/* Botão padronizado dentro do modal */}
+                {onCreateNew && (
+                    <>
+                        <Divider sx={{ my: 2 }} />
+                        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={onCreateNew}>
+                            Cadastrar Novo
+                        </Button>
+                    </>
+                )}
             </Box>
         </Modal>
     );

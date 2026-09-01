@@ -1,18 +1,28 @@
 package br.com.bot_mexc.services;
 
+import br.com.bot_mexc.configs.RabbitMQConfig;
+import br.com.bot_mexc.models.dtos.CriarSimulacaoRequestDTO;
 import br.com.bot_mexc.models.dtos.OperacaoCacheDTO;
 import br.com.bot_mexc.models.dtos.OrdemRequestDTO;
 import br.com.bot_mexc.models.entities.Compra;
+import br.com.bot_mexc.models.entities.Estrategia;
+import br.com.bot_mexc.models.entities.Operacao;
 import br.com.bot_mexc.models.entities.Venda;
+import br.com.bot_mexc.models.enums.StatusOperacoes;
+import br.com.bot_mexc.models.enums.TipoOperacao;
 import br.com.bot_mexc.repositories.CompraRepository;
+import br.com.bot_mexc.repositories.EstrategiaRepository;
 import br.com.bot_mexc.repositories.OperacaoRepository;
 import br.com.bot_mexc.repositories.VendaRepository;
 import br.com.bot_mexc.utils.DateUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,10 +37,38 @@ public class SimulacaoService {
     private final OperacaoRepository operacaoRepository;
     private final CompraRepository compraRepository;
     private final VendaRepository vendaRepository;
+    private final EstrategiaRepository estrategiaRepository;
     private final OperacaoCacheService operacaoCacheService;
+    private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
 
     private static final BigDecimal TAXA_OPERACAO = new BigDecimal("0.001"); // 0.1%
+
+    @Transactional
+    public String iniciarSimulacao(CriarSimulacaoRequestDTO request) {
+        Estrategia estrategia = estrategiaRepository.findById(request.idEstrategia())
+                .orElseThrow(() -> new ValidationException("Estratégia não encontrada."));
+
+        Operacao operacao = Operacao.builder()
+                .par(request.par())
+                .intervalo(request.intervalo())
+                .estrategia(estrategia)
+                .modoTeste(true)
+                .saldoInicial(request.saldoInicial())
+                .tipoOperacao(TipoOperacao.BACKTEST)
+                .status(StatusOperacoes.AGUARDANDO)
+                .dataInicio(request.dataInicio())
+                .dataFim(request.dataFim())
+                .build();
+
+        operacao = operacaoRepository.save(operacao);
+
+        // Fire-and-forget: Emite o ID para a fila de processamento, isolando o chamador
+        rabbitTemplate.convertAndSend(RabbitMQConfig.SIMULATIONS_PROCESS_QUEUE, operacao.getId());
+
+        log.info("[BACKTEST] Simulação criada e enfileirada. Operação ID: {}", operacao.getId());
+        return operacao.getId();
+    }
 
     public void processarOrdemSimulada(OperacaoCacheDTO operacaoCache, OrdemRequestDTO ordem) {
         final var snapshotIndicadores = serializarIndicadores(ordem.indicadores());

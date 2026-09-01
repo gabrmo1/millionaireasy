@@ -4,8 +4,10 @@ import br.com.bot_mexc.models.dtos.CriarOperacaoDTO;
 import br.com.bot_mexc.models.dtos.HistoricoOperacaoDTO;
 import br.com.bot_mexc.models.dtos.OperacaoDTO;
 import br.com.bot_mexc.models.dtos.monitoramento.MonitoramentoDataDTO;
+import br.com.bot_mexc.models.dtos.monitoramento.RelatorioDesempenhoDTO;
 import br.com.bot_mexc.services.MonitoramentoService;
 import br.com.bot_mexc.services.OperacoesService;
+import br.com.bot_mexc.services.RelatorioDesempenhoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +21,14 @@ public class OperacaoController {
 
     private final MonitoramentoService monitoramentoService;
     private final OperacoesService operacoesService;
+    private final RelatorioDesempenhoService relatorioDesempenhoService;
 
-    public OperacaoController(OperacoesService operacoesService, MonitoramentoService monitoramentoService) {
+    public OperacaoController(OperacoesService operacoesService,
+                              MonitoramentoService monitoramentoService,
+                              RelatorioDesempenhoService relatorioDesempenhoService) {
         this.monitoramentoService = monitoramentoService;
         this.operacoesService = operacoesService;
+        this.relatorioDesempenhoService = relatorioDesempenhoService;
     }
 
     @GetMapping
@@ -78,4 +84,16 @@ public class OperacaoController {
     public ResponseEntity<MonitoramentoDataDTO> buscarDadosMonitoramento(@PathVariable String id) {
         return ResponseEntity.ok(monitoramentoService.buscarDadosMonitoramento(id));
     }
+
+    /**
+     * Endpoint para consumo do Relatório de Desempenho.
+     * Os atributos numéricos problemáticos (divisões por zero, arrays vazios) já foram limpos e
+     * estabilizados na Engine do RelatorioDesempenhoService, retornando 'null' ou '0' adequadamente
+     * para consumo direto do JSON pelo Frontend.
+     */
+    @GetMapping("/{id}/relatorio-desempenho")
+    public ResponseEntity<RelatorioDesempenhoDTO> gerarRelatorioDesempenho(@PathVariable String id) {
+        return ResponseEntity.ok(relatorioDesempenhoService.gerarRelatorio(id));
+    }
+
 }

@@ -1,9 +1,9 @@
 package br.com.bot_mexc.models.entities;
 
 import br.com.bot_mexc.models.enums.StatusOperacoes;
+import br.com.bot_mexc.models.enums.TipoOperacao;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -47,4 +47,8 @@ public class Operacao extends BaseEntity {
     @Column(name = "saldo_inicial")
     BigDecimal saldoInicial;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_operacao", length = 20, nullable = false)
+    @Builder.Default
+    TipoOperacao tipoOperacao = TipoOperacao.LIVE;
 }

@@ -10,6 +10,8 @@ import Welcome from './components/pages/Welcome';
 import OperadoresPage from './pages/Operadores/OperadoresPage';
 import OperacoesPage from './pages/Operacoes/OperacoesPage';
 import EstrategiasPage from './pages/Estrategias/EstrategiasPage';
+import SimulacoesPage from "./pages/Simulacoes/SimulacoesPage.tsx";
+
 
 const scrollbarStyles = (theme: any) => ({
     '*::-webkit-scrollbar': {
@@ -55,6 +57,7 @@ const AppContent = () => {
                 <Route path="/operadores" element={<OperadoresPage />} />
                 <Route path="/estrategias" element={<EstrategiasPage />} />
                 <Route path="/operacoes" element={<OperacoesPage />} />
+                <Route path="/simulacoes" element={<SimulacoesPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

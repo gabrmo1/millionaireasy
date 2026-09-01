@@ -14,4 +14,5 @@ public interface CompraRepository extends JpaRepository<Compra, String> {
 
     List<Compra> findAllByOperacaoIdOrderByDataCriacaoDesc(String idOperacao);
 
+    List<Compra> findAllByOperacaoIdOrderByDataCompraAsc(String operacaoId);
 }

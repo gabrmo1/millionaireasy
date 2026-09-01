@@ -6,11 +6,12 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param; // IMPORT ADICIONADO
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OperacaoRepository extends JpaRepository<Operacao, String> {
@@ -31,6 +32,14 @@ public interface OperacaoRepository extends JpaRepository<Operacao, String> {
             @Param("par") String par,
             @Param("intervalo") String intervalo
     );
+
+    @Query("SELECT o FROM Operacao o " +
+            "LEFT JOIN FETCH o.estrategia e " +
+            "LEFT JOIN FETCH e.condicoesCompra " +
+            "LEFT JOIN FETCH e.condicoesVenda " +
+            "LEFT JOIN FETCH e.indicadoresConfig " +
+            "WHERE o.id = :id")
+    Optional<Operacao> findByIdEagerly(@Param("id") String id);
 
     @Modifying
     @Transactional

@@ -3,6 +3,7 @@ import { alpha } from '@mui/material/styles'
 import { Box, Toolbar, Drawer, List, ListItemButton, ListItemText, Divider, ListItemIcon } from '@mui/material';
 import { Link } from 'react-router-dom';
 import NavBar from './NavBar';
+import ScienceIcon from '@mui/icons-material/Science';
 
 import {
     Dashboard,
@@ -33,7 +34,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             title: 'Estratégias',
             icon: <Settings color="warning" />,
             link: '/estrategias',
-        }
+        },
+        {
+            title: 'Simulações',
+            icon: <ScienceIcon color="secondary" />,
+            link: '/simulacoes',
+        },
     ];
 
     return (
