@@ -5,5 +5,6 @@ public enum StatusOperacoes {
     EM_ANDAMENTO,
     PARADO,
     FINALIZADO,
-    ERRO
+    ERRO,
+    FALHA_SALDO
 }

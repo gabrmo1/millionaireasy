@@ -3,12 +3,15 @@ package br.com.bot_mexc.services;
 import br.com.bot_mexc.models.dtos.CandleDTO;
 import br.com.bot_mexc.models.dtos.EstadoIndicadoresDTO;
 import br.com.bot_mexc.models.dtos.IndicadorConfigDTO;
+import br.com.bot_mexc.models.dtos.PrimitiveCandle;
 import br.com.bot_mexc.models.entities.IndicadorConfig;
 import br.com.bot_mexc.models.enums.TipoIndicador;
 import br.com.bot_mexc.repositories.CandleRepository;
-import br.com.bot_mexc.utils.CalculoUtils;
+import br.com.bot_mexc.services.strategy.IndicadorContext;
+import br.com.bot_mexc.services.strategy.IndicadorState;
+import br.com.bot_mexc.services.strategy.IndicadorStrategy;
+import br.com.bot_mexc.services.strategy.IndicadorStrategyRegistry;
 import br.com.bot_mexc.utils.CandleUtils;
-import br.com.bot_mexc.utils.constants.IndicadorKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -30,14 +34,22 @@ public class IndicadorStateService {
     private final CandleRepository candleRepository;
     private final MexcConnectionService mexcConnectionService;
     private final ObjectMapper objectMapper;
+    private final IndicadorStrategyRegistry strategyRegistry;
 
     private static final String STATE_KEY_PREFIX = "mexc:indicador:state:";
     private static final String HISTORY_KEY_PREFIX = "mexc:price:history:";
 
-    /**
-     * Força a inicialização do estado dos indicadores baseada no histórico.
-     * Deve ser chamado ao iniciar uma operação para evitar "previous" nulo.
-     */
+    // L1 Cache: Thread-safe, sem contenção de I/O, ideal para mutabilidade em alta frequência.
+    private final Map<String, IndicadorState> l1Cache = new ConcurrentHashMap<>();
+
+    public IndicadorState getL1State(String par, String intervalo, String canonicalKey, TipoIndicador tipo) {
+        String cacheKey = par + ":" + intervalo + ":" + canonicalKey;
+        return l1Cache.computeIfAbsent(cacheKey, k -> {
+            var strategy = strategyRegistry.get(tipo);
+            return strategy != null ? strategy.inicializarEstado() : null;
+        });
+    }
+
     public void warmupState(String par, String intervalo, Set<IndicadorConfig> configs) {
         log.info("Realizando warmup de indicadores para {}/{}", par, intervalo);
         initializeStateFromHistory(par, intervalo, configs);
@@ -46,7 +58,6 @@ public class IndicadorStateService {
     public EstadoIndicadoresDTO getOrInitializeState(String par, String intervalo, Set<IndicadorConfig> configs, long currentCandleTime) {
         final var stateKey = getStateKey(par, intervalo);
         EstadoIndicadoresDTO state = null;
-
         try {
             var cached = redisTemplate.opsForValue().get(stateKey);
             if (cached != null) {
@@ -60,64 +71,43 @@ public class IndicadorStateService {
             log.info("Estado inválido/ausente para {}/{}. Inicializando via histórico...", par, intervalo);
             return initializeStateFromHistory(par, intervalo, configs);
         }
-
         return state;
     }
 
     public void advanceState(String par, String intervalo, Set<IndicadorConfig> configs, CandleDTO closedCandle) {
         final var currentState = getOrInitializeState(par, intervalo, configs, closedCandle.dataFechamento());
-
         if (currentState.ultimaDataFechamento().equals(closedCandle.dataFechamento()))
             return;
 
         final var novosEstados = new HashMap<>(currentState.estados());
         updatePriceHistory(par, intervalo, closedCandle.valorFechamento());
 
-        var chavesProcessadasNestaRodada = new HashSet<String>();
+        PrimitiveCandle pCandle = new PrimitiveCandle(
+                closedCandle.dataAbertura(), closedCandle.dataFechamento(),
+                closedCandle.valorAbertura().doubleValue(), closedCandle.valorFechamento().doubleValue(),
+                closedCandle.minima().doubleValue(), closedCandle.maxima().doubleValue(), closedCandle.volume().doubleValue()
+        );
+
+        double previousClose = currentState.ultimoPrecoFechamento() != null ? currentState.ultimoPrecoFechamento().doubleValue() : Double.NaN;
+        var chavesProcessadas = new HashSet<String>();
 
         for (IndicadorConfig config : configs) {
             final var key = generateCanonicalKey(config);
+            if (chavesProcessadas.contains(key)) continue;
 
-            if (chavesProcessadasNestaRodada.contains(key))
-                continue;
+            var strategy = strategyRegistry.get(config.getTipoIndicador());
+            if (strategy != null) {
+                var params = IndicadorConfigDTO.parametrosFromJson(config.getParametros());
+                IndicadorState l1State = getL1State(par, intervalo, key, config.getTipoIndicador());
+                IndicadorContext context = new IndicadorContext(params, l1State, previousClose, null);
 
-            final var params = IndicadorConfigDTO.parametrosFromJson(config.getParametros());
-            final var estadoAnt = currentState.estados().get(key);
+                double calculatedValue = strategy.calcular(pCandle, context);
 
-            if (estadoAnt == null)
-                continue;
-
-            EstadoIndicadoresDTO.EstadoIndicadorItem novoItem = null;
-
-            try {
-                switch (config.getTipoIndicador()) {
-                    case EMA:
-                        final var pEma = params.getOrDefault(IndicadorKeys.PARAM_PERIODO_EMA, 200);
-                        final var novaEma = CalculoUtils.calcularEmaIncremental(closedCandle.valorFechamento(), estadoAnt.valor(), pEma);
-                        novoItem = new EstadoIndicadoresDTO.EstadoIndicadorItem(novaEma, null, null, null);
-                        break;
-                    case RSI_CURTO:
-                    case RSI_MEDIO:
-                    case RSI_LONGO:
-                        final var pRsi = getPeriodoRsi(config, params);
-                        final var variacao = closedCandle.valorFechamento().subtract(currentState.ultimoPrecoFechamento());
-                        final var ganho = variacao.compareTo(BigDecimal.ZERO) > 0 ? variacao : BigDecimal.ZERO;
-                        final var perda = variacao.compareTo(BigDecimal.ZERO) < 0 ? variacao.abs() : BigDecimal.ZERO;
-
-                        final var novaMediaGanho = CalculoUtils.calcularMediaGanhoRsi(estadoAnt.avgGain(), pRsi, ganho);
-                        final var novaMediaPerda = CalculoUtils.calcularMediaPerdaRsi(estadoAnt.avgLoss(), pRsi, perda);
-                        final var novoRsi = CalculoUtils.calculateRsiFromAverages(novaMediaGanho, novaMediaPerda);
-
-                        novoItem = new EstadoIndicadoresDTO.EstadoIndicadorItem(novoRsi, novaMediaGanho, novaMediaPerda, null);
-                        break;
-                }
-            } catch (Exception e) {
-                log.error("Erro ao avançar estado incremental para {}: {}", key, e.getMessage());
-            }
-
-            if (novoItem != null) {
-                novosEstados.put(key, novoItem);
-                chavesProcessadasNestaRodada.add(key);
+                // Grava L2 de forma segura para recuperação (Retrocompatível)
+                novosEstados.put(key, EstadoIndicadoresDTO.EstadoIndicadorItem.builder()
+                        .valor(Double.isNaN(calculatedValue) ? BigDecimal.ZERO : BigDecimal.valueOf(calculatedValue))
+                        .build());
+                chavesProcessadas.add(key);
             }
         }
 
@@ -136,53 +126,75 @@ public class IndicadorStateService {
         redisTemplate.opsForList().trim(key, -300, -1);
     }
 
+    // =========================================================================================
+    // TASK 2: Refatoração do Motor de Warmup Unificado e Zero-Allocation na iteração
+    // =========================================================================================
     private EstadoIndicadoresDTO initializeStateFromHistory(String par, String intervalo, Set<IndicadorConfig> configs) {
         final var history = fetchCandlesHistory(par, intervalo);
-
-        if (history.isEmpty())
-            return null;
-
-        final var lastCandle = history.getLast();
-        final var estados = new HashMap<String, EstadoIndicadoresDTO.EstadoIndicadorItem>();
+        if (history.isEmpty()) return null;
 
         final var historyKey = HISTORY_KEY_PREFIX + par + ":" + intervalo;
         redisTemplate.delete(historyKey);
-
         final var prices = history.stream().map(CandleDTO::valorFechamento).toList();
         redisTemplate.opsForList().rightPushAll(historyKey, prices.toArray());
 
+        // Arrays primitivos e referências diretas para evitar autoboxing/GC overhead no loop
+        int numConfigs = configs.size();
+        IndicadorStrategy[] strategyArray = new IndicadorStrategy[numConfigs];
+        IndicadorContext[] contextArray = new IndicadorContext[numConfigs];
+        String[] keysArray = new String[numConfigs];
+
+        int idx = 0;
         for (IndicadorConfig config : configs) {
-            final var key = generateCanonicalKey(config);
+            String canonicalKey = generateCanonicalKey(config);
+            var strategy = strategyRegistry.get(config.getTipoIndicador());
 
-            if (estados.containsKey(key)) continue;
-
-            var params = IndicadorConfigDTO.parametrosFromJson(config.getParametros());
-
-            if (config.getTipoIndicador() == TipoIndicador.EMA) {
-                final var p = params.getOrDefault(IndicadorKeys.PARAM_PERIODO_EMA, 200);
-                final var val = CalculoUtils.calcularEma(prices, p);
-                estados.put(key, new EstadoIndicadoresDTO.EstadoIndicadorItem(val, null, null, null));
-            } else if (isRsi(config.getTipoIndicador())) {
-                final var p = getPeriodoRsi(config, params);
-
-                final var triplo = CalculoUtils.calcularTriploRsi(history, p, p, p);
-
-                BigDecimal rsiVal = config.getTipoIndicador() == TipoIndicador.RSI_CURTO ? triplo.rsiCurto() :
-                        config.getTipoIndicador() == TipoIndicador.RSI_MEDIO ? triplo.rsiMedio() : triplo.rsiLongo();
-
-                estados.put(key, new EstadoIndicadoresDTO.EstadoIndicadorItem(
-                        rsiVal,
-                        triplo.mediaGanhoFinal(),
-                        triplo.mediaPerdaFinal(),
-                        null
-                ));
+            if (strategy == null) {
+                throw new IllegalStateException("Estratégia falhou/não encontrada no Registry: " + config.getTipoIndicador());
             }
+
+            IndicadorState l1State = getL1State(par, intervalo, canonicalKey, config.getTipoIndicador());
+            l1State.reset(); // Garante estado limpo antes do loop
+
+            keysArray[idx] = canonicalKey;
+            strategyArray[idx] = strategy;
+            contextArray[idx] = new IndicadorContext(IndicadorConfigDTO.parametrosFromJson(config.getParametros()), l1State, Double.NaN, null);
+            idx++;
+        }
+
+        double previousClose = Double.NaN;
+        double[] finalValues = new double[numConfigs];
+
+        // CPU-bound loop: Execução puramente vetorial nas estratégias
+        for (CandleDTO dto : history) {
+            PrimitiveCandle pCandle = new PrimitiveCandle(
+                    dto.dataAbertura(), dto.dataFechamento(),
+                    dto.valorAbertura().doubleValue(), dto.valorFechamento().doubleValue(),
+                    dto.minima().doubleValue(), dto.maxima().doubleValue(), dto.volume().doubleValue()
+            );
+
+            for (int i = 0; i < numConfigs; i++) {
+                contextArray[i] = new IndicadorContext(contextArray[i].parametros(), contextArray[i].estado(), previousClose, null);
+                finalValues[i] = strategyArray[i].calcular(pCandle, contextArray[i]);
+            }
+            previousClose = pCandle.valorFechamento();
+        }
+
+        // Snapshot Final para o L2 (Redis)
+        final var lastCandle = history.getLast();
+        final var estadosL2 = new HashMap<String, EstadoIndicadoresDTO.EstadoIndicadorItem>();
+
+        for (int i = 0; i < numConfigs; i++) {
+            double val = finalValues[i];
+            estadosL2.put(keysArray[i], EstadoIndicadoresDTO.EstadoIndicadorItem.builder()
+                    .valor(Double.isNaN(val) ? BigDecimal.ZERO : BigDecimal.valueOf(val))
+                    .build());
         }
 
         final var state = new EstadoIndicadoresDTO(
                 lastCandle.dataFechamento(),
                 lastCandle.valorFechamento(),
-                estados
+                estadosL2
         );
 
         redisTemplate.opsForValue().set(getStateKey(par, intervalo), state, 7, TimeUnit.DAYS);
@@ -192,6 +204,7 @@ public class IndicadorStateService {
     private List<CandleDTO> fetchCandlesHistory(String par, String intervalo) {
         final var dbCandles = candleRepository.findTopCandlesDesc(par, intervalo, org.springframework.data.domain.PageRequest.of(0, 300));
         if (dbCandles.size() >= 300) {
+            // Ordenação asc garantida para simulação cronológica correta
             dbCandles.sort(Comparator.comparing(br.com.bot_mexc.models.entities.Candle::getDataFechamento));
             return dbCandles.stream().map(CandleUtils::buildDtoFromEntity).toList();
         }
@@ -203,7 +216,6 @@ public class IndicadorStateService {
         final var instantUltimaDataFechamento = Instant.ofEpochSecond(state.ultimaDataFechamento());
         final var minutesDiff = Duration.between(instantUltimaDataFechamento, instantTempoAtualCandle).toMinutes();
         final var intervalMinutes = parseInterval(intervalo);
-
         return minutesDiff > (intervalMinutes * 2);
     }
 
@@ -218,32 +230,15 @@ public class IndicadorStateService {
         final var params = IndicadorConfigDTO.parametrosFromJson(config.getParametros());
         final var sortedParams = new TreeMap<>(params);
         final var sb = new StringBuilder();
-
         sb.append(config.getTipoIndicador().name());
-
         if (!sortedParams.isEmpty()) {
             sb.append("_");
             sortedParams.forEach((k, v) -> sb.append(k).append("=").append(v).append("|"));
         }
-
         return sb.toString();
     }
 
     private String getStateKey(String par, String intervalo) {
         return STATE_KEY_PREFIX + par + ":" + intervalo;
-    }
-
-    private boolean isRsi(TipoIndicador t) {
-        return t == TipoIndicador.RSI_CURTO || t == TipoIndicador.RSI_MEDIO || t == TipoIndicador.RSI_LONGO;
-    }
-
-    private int getPeriodoRsi(IndicadorConfig c, Map<String, Integer> p) {
-        if (c.getTipoIndicador() == TipoIndicador.RSI_CURTO)
-            return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_CURTO, 7);
-
-        if (c.getTipoIndicador() == TipoIndicador.RSI_MEDIO)
-            return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_MEDIO, 14);
-
-        return p.getOrDefault(IndicadorKeys.PARAM_PERIODO_RSI_LONGO, 21);
     }
 }

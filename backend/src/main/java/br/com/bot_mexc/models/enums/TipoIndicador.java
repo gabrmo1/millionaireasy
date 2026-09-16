@@ -8,5 +8,10 @@ public enum TipoIndicador {
     RSI_ESTOCASTICO_D,
     EMA,
     SMA,
-    VOLUME
+    VOLUME,
+
+    MACD,
+    BOLLINGER_BANDS,
+    ATR,
+    VWAP,
 }
