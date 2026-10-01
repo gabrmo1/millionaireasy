@@ -27,6 +27,7 @@ repositories {
 }
 
 extra["springCloudVersion"] = "2025.0.0"
+extra["springModulithVersion"] = "1.3.1"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -53,16 +54,23 @@ dependencies {
 	implementation("com.google.protobuf:protobuf-java:$protobufVersion")
 	implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
 
+	// Monólito Modular, Rate Limiting & Two-Level Cache
+	implementation("org.springframework.modulith:spring-modulith-starter-core")
+	implementation("com.bucket4j:bucket4j-core:8.10.1")
+	implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.modulith:spring-modulith-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 dependencyManagement {
 	imports {
 		mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+		mavenBom("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}")
 	}
 }
 

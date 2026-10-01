@@ -12,7 +12,7 @@ import static org.springframework.data.web.config.EnableSpringDataWebSupport.Pag
 @EnableAsync
 @EnableScheduling
 @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
-@EnableFeignClients(basePackages = "br.com.bot_mexc.integrations")
+@EnableFeignClients(basePackages = "br.com.bot_mexc.modules.market.integrations")
 
 @SpringBootApplication
 public class Application {
