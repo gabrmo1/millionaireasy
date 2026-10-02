@@ -43,6 +43,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -82,12 +84,23 @@ public class SimulacaoService {
                 .build();
 
         operacao = operacaoRepository.save(operacao);
+        final String opId = operacao.getId();
 
-        // Fire-and-forget: Emite o ID para a fila de processamento, isolando o chamador
-        rabbitTemplate.convertAndSend(RabbitMQConfig.SIMULATIONS_PROCESS_QUEUE, operacao.getId());
+        // Envia para a fila somente após o commit da transação no banco (evita race condition com o consumidor)
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.SIMULATIONS_PROCESS_QUEUE, opId);
+                    log.info("[BACKTEST] Simulação criada e enfileirada após commit. Operação ID: {}", opId);
+                }
+            });
+        } else {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.SIMULATIONS_PROCESS_QUEUE, opId);
+            log.info("[BACKTEST] Simulação criada e enfileirada. Operação ID: {}", opId);
+        }
 
-        log.info("[BACKTEST] Simulação criada e enfileirada. Operação ID: {}", operacao.getId());
-        return operacao.getId();
+        return opId;
     }
 
     public void processarOrdemSimulada(OperacaoCacheDTO operacaoCache, OrdemRequestDTO ordem) {

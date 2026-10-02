@@ -39,6 +39,19 @@ public interface OperacaoRepository extends JpaRepository<Operacao, String> {
     @Query("SELECT o FROM Operacao o LEFT JOIN FETCH o.operador LEFT JOIN FETCH o.estrategia")
     List<Operacao> findAllEagerly();
 
+    @Query("SELECT o FROM Operacao o " +
+            "LEFT JOIN FETCH o.operador " +
+            "LEFT JOIN FETCH o.estrategia " +
+            "WHERE (o.tipoOperacao IS NULL OR o.tipoOperacao != br.com.bot_mexc.shared.enums.TipoOperacao.BACKTEST)")
+    List<Operacao> findAllRealOperationsEagerly();
+
+    @Query("SELECT o FROM Operacao o " +
+            "LEFT JOIN FETCH o.operador " +
+            "LEFT JOIN FETCH o.estrategia " +
+            "WHERE o.tipoOperacao = br.com.bot_mexc.shared.enums.TipoOperacao.BACKTEST")
+    List<Operacao> findSimulationsEagerly();
+
+
     List<Operacao> findByStatus(StatusOperacoes status);
 
     @Query("SELECT o FROM Operacao o " +

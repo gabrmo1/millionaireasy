@@ -50,8 +50,8 @@ public class SimulacaoController {
     @GetMapping
     public ResponseEntity<List<SimulacaoDTO>> findAll() {
         // Filtragem em memória das operações Eagerly carregadas para isolamento do tipo BACKTEST
-        List<SimulacaoDTO> simulacoes = operacaoRepository.findAllEagerly().stream()
-                .filter(op -> op.getTipoOperacao() == TipoOperacao.BACKTEST)
+        List<SimulacaoDTO> simulacoes = operacaoRepository.findSimulationsEagerly().stream()
+
                 .map(op -> SimulacaoDTO.builder()
                         .id(op.getId())
                         .par(op.getPar())

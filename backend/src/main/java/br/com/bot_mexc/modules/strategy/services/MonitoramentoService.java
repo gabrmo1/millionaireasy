@@ -19,6 +19,7 @@ import br.com.bot_mexc.modules.strategy.repositories.CompraRepository;
 import br.com.bot_mexc.modules.strategy.repositories.VendaRepository;
 import br.com.bot_mexc.modules.timeseries.dtos.CandleDTO;
 import br.com.bot_mexc.modules.timeseries.services.CandleService;
+import br.com.bot_mexc.modules.timeseries.services.BacktestCandleProviderService;
 import br.com.bot_mexc.modules.timeseries.services.AnaliseService;
 import br.com.bot_mexc.modules.timeseries.repositories.AnaliseRepository;
 import br.com.bot_mexc.modules.timeseries.builders.AnaliseBuilder;
@@ -58,21 +59,30 @@ public class MonitoramentoService {
     private final CompraRepository compraRepository;
     private final VendaRepository vendaRepository;
     private final ObjectMapper objectMapper;
+    private final BacktestCandleProviderService candleProviderService;
 
     public MonitoramentoService(OperacaoRepository operacaoRepository, MexcConnectionService mexcConnectionService,
                                 AnaliseRepository analiseRepository, CompraRepository compraRepository,
-                                VendaRepository vendaRepository, ObjectMapper objectMapper) {
+                                VendaRepository vendaRepository, ObjectMapper objectMapper,
+                                BacktestCandleProviderService candleProviderService) {
         this.operacaoRepository = operacaoRepository;
         this.mexcConnectionService = mexcConnectionService;
         this.analiseRepository = analiseRepository;
         this.compraRepository = compraRepository;
         this.vendaRepository = vendaRepository;
         this.objectMapper = objectMapper;
+        this.candleProviderService = candleProviderService;
     }
 
     public MonitoramentoDataDTO buscarDadosMonitoramento(String operacaoId) {
         final var operacao = operacaoRepository.findById(operacaoId).orElseThrow(() -> new RuntimeException("Operação não encontrada"));
-        final var candlesMexc = mexcConnectionService.consultarCandles(operacao.getPar(), operacao.getIntervalo(), "1000"); //TODO: verificar por quê a data tem 3 dígitos a mais
+        List<CandleDTO> candlesMexc;
+        if (operacao.getTipoOperacao() == TipoOperacao.BACKTEST || Boolean.TRUE.equals(operacao.getModoTeste())
+                || (operacao.getDataInicio() != null && operacao.getDataFim() != null)) {
+            candlesMexc = candleProviderService.obterCandles(operacao.getPar(), operacao.getIntervalo(), operacao.getDataInicio(), operacao.getDataFim());
+        } else {
+            candlesMexc = mexcConnectionService.consultarCandles(operacao.getPar(), operacao.getIntervalo(), "1000");
+        }
 
         if (candlesMexc.isEmpty())
             return buildEmptyDTO(operacao);
@@ -118,22 +128,31 @@ public class MonitoramentoService {
 
         final var indicadoresMap = new HashMap<String, List<IndicadorPointDTO>>();
 
-        Arrays.asList(
-                IndicadorKeys.NAME_EMA, IndicadorKeys.NAME_SMA,
-                IndicadorKeys.NAME_RSI_CURTO, IndicadorKeys.NAME_RSI_MEDIO, IndicadorKeys.NAME_RSI_LONGO,
-                IndicadorKeys.NAME_RSI_STOCH_K, IndicadorKeys.NAME_RSI_STOCH_D
-        ).forEach(k -> indicadoresMap.put(k, new ArrayList<>()));
+        Set<TipoIndicador> tiposConfigurados = new HashSet<>();
+        if (operacao.getEstrategia() != null && operacao.getEstrategia().getIndicadoresConfig() != null) {
+            for (IndicadorConfig ic : operacao.getEstrategia().getIndicadoresConfig()) {
+                tiposConfigurados.add(ic.getTipoIndicador());
+            }
+        }
+
+        if (tiposConfigurados.contains(TipoIndicador.EMA)) indicadoresMap.put(IndicadorKeys.NAME_EMA, new ArrayList<>());
+        if (tiposConfigurados.contains(TipoIndicador.SMA)) indicadoresMap.put(IndicadorKeys.NAME_SMA, new ArrayList<>());
+        if (tiposConfigurados.contains(TipoIndicador.RSI_CURTO)) indicadoresMap.put(IndicadorKeys.NAME_RSI_CURTO, new ArrayList<>());
+        if (tiposConfigurados.contains(TipoIndicador.RSI_MEDIO)) indicadoresMap.put(IndicadorKeys.NAME_RSI_MEDIO, new ArrayList<>());
+        if (tiposConfigurados.contains(TipoIndicador.RSI_LONGO)) indicadoresMap.put(IndicadorKeys.NAME_RSI_LONGO, new ArrayList<>());
+        if (tiposConfigurados.contains(TipoIndicador.RSI_ESTOCASTICO_K)) indicadoresMap.put(IndicadorKeys.NAME_RSI_STOCH_K, new ArrayList<>());
+        if (tiposConfigurados.contains(TipoIndicador.RSI_ESTOCASTICO_D)) indicadoresMap.put(IndicadorKeys.NAME_RSI_STOCH_D, new ArrayList<>());
 
         for (Analise a : analises) {
             final var time = a.getDataAnalise().atZone(ZoneId.systemDefault()).toEpochSecond();
 
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_EMA), time, a.getEma());
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_SMA), time, a.getSma());
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_CURTO), time, a.getRsiCurto());
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_MEDIO), time, a.getRsiMedio());
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_LONGO), time, a.getRsiLongo());
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_K), time, a.getRsiEstocasticoK());
-            addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_D), time, a.getRsiEstocasticoD());
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_EMA)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_EMA), time, a.getEma(), true);
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_SMA)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_SMA), time, a.getSma(), true);
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_RSI_CURTO)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_CURTO), time, a.getRsiCurto(), false);
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_RSI_MEDIO)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_MEDIO), time, a.getRsiMedio(), false);
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_RSI_LONGO)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_LONGO), time, a.getRsiLongo(), false);
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_RSI_STOCH_K)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_K), time, a.getRsiEstocasticoK(), false);
+            if (indicadoresMap.containsKey(IndicadorKeys.NAME_RSI_STOCH_D)) addPoint(indicadoresMap.get(IndicadorKeys.NAME_RSI_STOCH_D), time, a.getRsiEstocasticoD(), false);
         }
 
         final var eventos = buscarEventos(operacaoId);
@@ -219,9 +238,13 @@ public class MonitoramentoService {
         return eventos;
     }
 
-    private void addPoint(List<IndicadorPointDTO> list, long time, BigDecimal value) {
-        if (value != null)
+    private void addPoint(List<IndicadorPointDTO> list, long time, BigDecimal value, boolean isPriceOverlay) {
+        if (value != null && list != null) {
+            if (isPriceOverlay && value.compareTo(BigDecimal.ZERO) <= 0) {
+                return;
+            }
             list.add(new IndicadorPointDTO(time, value));
+        }
     }
 
     private MonitoramentoDataDTO buildEmptyDTO(Operacao op) {

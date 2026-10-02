@@ -69,7 +69,7 @@ public class OperacoesService {
     }
 
     public List<OperacaoDTO> findAll() {
-        return operacaoRepository.findAllEagerly().stream()
+        return operacaoRepository.findAllRealOperationsEagerly().stream()
                 .map(OperacoesUtils::converterEntidadeParaDto)
                 .toList();
     }

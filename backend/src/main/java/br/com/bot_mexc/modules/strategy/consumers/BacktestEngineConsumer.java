@@ -70,8 +70,15 @@ public class BacktestEngineConsumer {
     public void processarBacktest(String operacaoId) {
         log.info("[BACKTEST-ENGINE] Iniciando processamento da simulação: {}", operacaoId);
         Operacao operacao = operacaoRepository.findByIdEagerly(operacaoId).orElse(null);
+        if (operacao == null) {
+            try {
+                Thread.sleep(150);
+            } catch (InterruptedException ignored) {}
+            operacao = operacaoRepository.findByIdEagerly(operacaoId).orElse(null);
+        }
+
         if (operacao == null || operacao.getStatus() != StatusOperacoes.AGUARDANDO) {
-            log.warn("[BACKTEST-ENGINE] Operação nula ou em status inválido. Abortando.");
+            log.warn("[BACKTEST-ENGINE] Operação nula ou em status inválido. Abortando. Status: {}", operacao != null ? operacao.getStatus() : "NULL");
             return;
         }
 
@@ -130,6 +137,18 @@ public class BacktestEngineConsumer {
             Arrays.fill(previousValues, Double.NaN);
             double previousClose = Double.NaN;
 
+            int maxWarmup = 14;
+            for (int k = 0; k < numConfigs; k++) {
+                if (paramsArray[k] != null) {
+                    for (Integer val : paramsArray[k].values()) {
+                        if (val != null && val > maxWarmup && val < 500) {
+                            maxWarmup = Math.max(maxWarmup, val);
+                        }
+                    }
+                }
+            }
+            int warmupCandles = Math.min(maxWarmup, Math.max(0, candles.size() - 1));
+
             // Loop Temporal: Iteração CPU-bound Pura (Zero Alocações na Fase de Warmup)
             for (int i = 0; i < candles.size(); i++) {
                 CandleDTO candle = candles.get(i);
@@ -148,7 +167,7 @@ public class BacktestEngineConsumer {
                 }
 
                 // Avaliação apenas após o Warmup (150 candles) para economizar GC com BigDecimals
-                if (i > 150) {
+                if (i >= warmupCandles) {
                     Map<String, BigDecimal> indicadoresResultados = new HashMap<>(numConfigs * 2 + 2, 1.0f);
 
                     indicadoresResultados.put(IndicadorKeys.RESULT_PRECO_FECHAMENTO, candle.valorFechamento());

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -41,6 +41,24 @@ export interface TradingChartProps {
     data: MonitoramentoDataDTO;
 }
 
+interface HoveredData {
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    indicators: { [key: string]: number };
+}
+
+interface ChartItem {
+    api: IChartApi;
+    container: HTMLDivElement;
+    nome: string;
+}
+
+const LINE_COLORS = ['#2962FF', '#FF6D00', '#AA00FF', '#00BCD4', '#FF5252', '#4CAF50'];
+
 const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
     const theme = useTheme();
 
@@ -49,22 +67,36 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
     const candleSeriesRef = useRef<any>(null);
     const lineSeriesRef = useRef<Map<string, any>>(new Map());
     const indicatorContainersRef = useRef<{ [key: string]: HTMLDivElement }>({});
-    const chartsRef = useRef<{ api: IChartApi, container: HTMLDivElement }[]>([]);
+    const chartsRef = useRef<ChartItem[]>([]);
 
     const [isListOpen, setIsListOpen] = useState(false);
     const [eventFilter, setEventFilter] = useState<'ALL' | 'COMPRA' | 'VENDA'>('ALL');
     const [isIndicatorsExpanded, setIsIndicatorsExpanded] = useState(true);
     const [tooltipData, setTooltipData] = useState<any | null>(null);
     const [alertMessage, setAlertMessage] = useState("");
+    const [hoveredCandle, setHoveredCandle] = useState<HoveredData | null>(null);
+
+    // Identifica apenas indicadores que realmente possuem dados válidos (> 0)
+    const validIndicators = useMemo(() => {
+        if (!data?.indicadores) return {};
+        const filtered: { [key: string]: typeof data.indicadores[string] } = {};
+        Object.entries(data.indicadores).forEach(([nome, pontos]) => {
+            const hasValidPoints = pontos && pontos.some(p => p.value != null && Number(p.value) > 0);
+            if (hasValidPoints) {
+                filtered[nome] = pontos;
+            }
+        });
+        return filtered;
+    }, [data?.indicadores]);
 
     const initialHidden = useMemo(() => {
         const hidden = new Set<string>();
-        if (!data) return hidden;
+        if (!validIndicators) return hidden;
 
         let oscCount = 0;
         let overlayCount = 0;
 
-        Object.keys(data.indicadores).forEach(nome => {
+        Object.keys(validIndicators).forEach(nome => {
             const isOverlay = nome.startsWith('EMA') || nome.startsWith('SMA') || nome.startsWith('BOLLINGER');
             if (isOverlay) {
                 overlayCount++;
@@ -79,12 +111,12 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
             }
         });
         return hidden;
-    }, [data]);
+    }, [validIndicators]);
 
     const initialOscillatorOrder = useMemo(() => {
-        if (!data) return [];
-        return Object.keys(data.indicadores).filter(n => !(n.startsWith('EMA') || n.startsWith('SMA') || n.startsWith('BOLLINGER')));
-    }, [data]);
+        if (!validIndicators) return [];
+        return Object.keys(validIndicators).filter(n => !(n.startsWith('EMA') || n.startsWith('SMA') || n.startsWith('BOLLINGER')));
+    }, [validIndicators]);
 
     const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(initialHidden);
     const hiddenIndicatorsRef = useRef<Set<string>>(initialHidden);
@@ -99,14 +131,16 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
         oscillatorOrderRef.current = initialOscillatorOrder;
     }, [initialHidden, initialOscillatorOrder]);
 
-    const updateTimeScaleVisibility = (hiddenSet: Set<string>) => {
+    const updateTimeScaleVisibility = useCallback((hiddenSet: Set<string>) => {
         if (!chartRef.current) return;
 
         const allOscillators = oscillatorOrderRef.current;
         const visibleOscillators = allOscillators.filter(n => !hiddenSet.has(n));
 
-        chartRef.current.timeScale().applyOptions({ visible: visibleOscillators.length === 0 });
+        // Gráfico principal SEMPRE exibe escala de tempo
+        chartRef.current.timeScale().applyOptions({ visible: true });
 
+        // O último oscilador visível no rodapé também exibe a régua de tempo
         visibleOscillators.forEach((oscNome, index) => {
             const isLast = index === visibleOscillators.length - 1;
             const chartData = chartsRef.current.find(c => c.container === indicatorContainersRef.current[oscNome]);
@@ -114,10 +148,10 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
                 chartData.api.timeScale().applyOptions({ visible: isLast });
             }
         });
-    };
+    }, []);
 
     const toggleIndicatorVisibility = (nome: string) => {
-        if (!data) return;
+        if (!validIndicators) return;
         const isOverlay = nome.startsWith('EMA') || nome.startsWith('SMA') || nome.startsWith('BOLLINGER');
 
         setHiddenIndicators(prev => {
@@ -125,7 +159,7 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
 
             if (next.has(nome)) {
                 const typeFilter = (n: string) => isOverlay ? (n.startsWith('EMA') || n.startsWith('SMA') || n.startsWith('BOLLINGER')) : !(n.startsWith('EMA') || n.startsWith('SMA') || n.startsWith('BOLLINGER'));
-                const allOfType = Object.keys(data.indicadores).filter(typeFilter);
+                const allOfType = Object.keys(validIndicators).filter(typeFilter);
                 const visibleOfType = allOfType.filter(n => !next.has(n));
 
                 if (visibleOfType.length >= 2) {
@@ -168,6 +202,30 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
         });
     };
 
+    // Dados do último candle para exibição padrão quando não houver hover
+    const latestCandleInfo = useMemo<HoveredData | null>(() => {
+        if (!data?.candles || data.candles.length === 0) return null;
+        const lastCandle = data.candles[data.candles.length - 1];
+        const inds: { [key: string]: number } = {};
+        Object.entries(validIndicators).forEach(([k, pts]) => {
+            if (!hiddenIndicators.has(k)) {
+                const pt = pts.find(p => p.time === lastCandle.time);
+                if (pt && Number(pt.value) > 0) {
+                    inds[k] = pt.value;
+                }
+            }
+        });
+        return {
+            time: lastCandle.time,
+            open: lastCandle.open,
+            high: lastCandle.high,
+            low: lastCandle.low,
+            close: lastCandle.close,
+            volume: lastCandle.volume,
+            indicators: inds
+        };
+    }, [data?.candles, validIndicators, hiddenIndicators]);
+
     useEffect(() => {
         if (!chartContainer || !data) return;
 
@@ -184,26 +242,32 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
             timeScale: {
                 timeVisible: true,
                 secondsVisible: false,
+                rightOffset: 12,
+                barSpacing: 9,
+                minBarSpacing: 3,
+                fixLeftEdge: false,
+                fixRightEdge: false,
+                borderColor: theme.palette.divider,
             },
             crosshair: {
                 mode: CrosshairMode.Normal,
             },
             leftPriceScale: {
-                visible: true,
-                borderColor: theme.palette.divider,
+                visible: false,
             },
             rightPriceScale: {
                 visible: true,
                 borderColor: theme.palette.divider,
-                minimumWidth: 60,
+                minimumWidth: 70,
+                autoScale: true,
             }
         });
 
         chartRef.current = mainChart;
         lineSeriesRef.current.clear();
 
-        const charts: { api: IChartApi, container: HTMLDivElement }[] = [
-            { api: mainChart, container: chartContainer }
+        const charts: ChartItem[] = [
+            { api: mainChart, container: chartContainer, nome: 'MAIN' }
         ];
 
         const candleSeries = mainChart.addSeries(CandlestickSeries, {
@@ -242,30 +306,32 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
             createSeriesMarkers(candleSeries, markers);
         }
 
-        const lineColors = ['#2962FF', '#FF6D00', '#AA00FF'];
         let lineIndexOverlay = 0;
         let lineIndexOscillator = 0;
 
-        Object.entries(data.indicadores).forEach(([nome, pontos]) => {
+        Object.entries(validIndicators).forEach(([nome, pontos]) => {
             const isOverlay = nome.startsWith('EMA') || nome.startsWith('SMA') || nome.startsWith('BOLLINGER');
 
-            const pontosOrdenados = [...pontos].sort((a, b) => a.time - b.time);
+            // Proteção de escala: elimina zeros e nulos para overlays de preço
+            const pontosValidos = pontos
+                .filter(p => p.value != null && (!isOverlay || Number(p.value) > 0))
+                .sort((a, b) => a.time - b.time);
 
             if (isOverlay) {
+                if (pontosValidos.length === 0) return;
+
                 const seriesOptions: any = {
-                    color: lineColors[lineIndexOverlay % lineColors.length],
+                    color: LINE_COLORS[lineIndexOverlay % LINE_COLORS.length],
                     lineWidth: 2,
                     title: nome,
                     visible: !hiddenIndicatorsRef.current.has(nome),
                     priceScaleId: 'right'
                 };
                 const lineSeries = mainChart.addSeries(LineSeries, seriesOptions);
-                if (pontosOrdenados.length > 0) {
-                    lineSeries.setData(pontosOrdenados.map(p => ({
-                        time: p.time as Time,
-                        value: p.value
-                    })));
-                }
+                lineSeries.setData(pontosValidos.map(p => ({
+                    time: p.time as Time,
+                    value: p.value
+                })));
                 lineSeriesRef.current.set(nome, lineSeries);
                 lineIndexOverlay++;
             } else {
@@ -285,30 +351,35 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
                     timeScale: {
                         timeVisible: true,
                         secondsVisible: false,
+                        rightOffset: 12,
+                        barSpacing: 9,
+                        minBarSpacing: 3,
+                        fixLeftEdge: false,
+                        fixRightEdge: false,
+                        borderColor: theme.palette.divider,
                     },
                     crosshair: {
                         mode: CrosshairMode.Normal,
                     },
                     leftPriceScale: {
-                        visible: true,
-                        borderColor: theme.palette.divider,
+                        visible: false,
                     },
                     rightPriceScale: {
                         visible: true,
                         borderColor: theme.palette.divider,
-                        minimumWidth: 60,
+                        minimumWidth: 70,
                     }
                 });
-                charts.push({ api: indChart, container });
+                charts.push({ api: indChart, container, nome });
 
                 const lineSeries = indChart.addSeries(LineSeries, {
-                    color: lineColors[lineIndexOscillator % lineColors.length],
+                    color: LINE_COLORS[lineIndexOscillator % LINE_COLORS.length],
                     lineWidth: 2,
                     title: nome,
                 });
 
-                if (pontosOrdenados.length > 0) {
-                    lineSeries.setData(pontosOrdenados.map(p => ({
+                if (pontosValidos.length > 0) {
+                    lineSeries.setData(pontosValidos.map(p => ({
                         time: p.time as Time,
                         value: p.value
                     })));
@@ -322,6 +393,7 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
         chartsRef.current = charts;
         updateTimeScaleVisibility(hiddenIndicatorsRef.current);
 
+        // Sincronização Lógica de Zoom e Pan entre todos os painéis
         let isSyncing = false;
         let lastKnownRange: any = null;
 
@@ -341,26 +413,72 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
             });
         });
 
+        // Sincronização de Crosshair e Legenda TradingView
         charts.forEach(c => {
             c.api.subscribeCrosshairMove(param => {
                 if (param.point === undefined || !param.time || param.point.x < 0 || param.point.y < 0) {
+                    charts.forEach(other => {
+                        if (other.api !== c.api) {
+                            try { (other.api as any).clearCrosshairPosition(); } catch (_) {}
+                        }
+                    });
                     setTooltipData(null);
+                    setHoveredCandle(null);
                     return;
                 }
 
-                const isHoveringMarker = param.hoveredObjectId !== undefined;
                 const timeS = param.time as number;
+
+                // Sincroniza mira vertical nos demais gráficos
+                charts.forEach(other => {
+                    if (other.api !== c.api) {
+                        const targetSeries = other.nome === 'MAIN'
+                            ? candleSeriesRef.current
+                            : lineSeriesRef.current.get(other.nome);
+                        if (targetSeries) {
+                            try {
+                                (other.api as any).setCrosshairPosition(0, timeS as Time, targetSeries);
+                            } catch (_) {}
+                        }
+                    }
+                });
+
+                // Atualiza dados da barra de status da legenda
+                const candle = data.candles.find(cd => cd.time === timeS);
+                if (candle) {
+                    const inds: { [key: string]: number } = {};
+                    Object.entries(validIndicators).forEach(([k, pts]) => {
+                        if (!hiddenIndicatorsRef.current.has(k)) {
+                            const pt = pts.find(p => p.time === timeS);
+                            if (pt && Number(pt.value) > 0) {
+                                inds[k] = pt.value;
+                            }
+                        }
+                    });
+                    setHoveredCandle({
+                        time: timeS,
+                        open: candle.open,
+                        high: candle.high,
+                        low: candle.low,
+                        close: candle.close,
+                        volume: candle.volume,
+                        indicators: inds
+                    });
+                }
+
+                // Tooltip flutuante em eventos de compra/venda
+                const isHoveringMarker = param.hoveredObjectId !== undefined;
                 const eventoHover = isHoveringMarker ? data.eventos.find(e => e.time === timeS) : undefined;
 
                 if (eventoHover) {
                     const overlaysTexto: string[] = [];
                     const oscillatorsTexto: string[] = [];
 
-                    Object.entries(data.indicadores)
+                    Object.entries(validIndicators)
                         .filter(([key]) => !hiddenIndicatorsRef.current.has(key))
                         .forEach(([key, pontos]) => {
                             const ponto = pontos.find(p => p.time === timeS);
-                            if (ponto) {
+                            if (ponto && Number(ponto.value) > 0) {
                                 const text = `${key}: ${ponto.value.toFixed(2)}`;
                                 const isOverlay = key.startsWith('EMA') || key.startsWith('SMA') || key.startsWith('BOLLINGER');
                                 if (isOverlay) overlaysTexto.push(text);
@@ -445,7 +563,7 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
             candleSeriesRef.current = null;
             chartsRef.current = [];
         };
-    }, [data, theme, chartContainer]);
+    }, [data, theme, chartContainer, validIndicators, updateTimeScaleVisibility]);
 
     const handleEventClick = (eventoTimeS: number) => {
         if (!chartRef.current || !candleSeriesRef.current || !data) return;
@@ -490,12 +608,98 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
 
     const isLightMode = theme.palette.mode === 'light';
 
+    // Determina os dados a serem exibidos na barra superior (Hover ou Último Candle)
+    const activeInfo = hoveredCandle || latestCandleInfo;
+    const isBullish = activeInfo ? activeInfo.close >= activeInfo.open : true;
+    const priceColor = isBullish ? '#26a69a' : '#ef5350';
+    const deltaPercent = activeInfo && activeInfo.open > 0
+        ? (((activeInfo.close - activeInfo.open) / activeInfo.open) * 100).toFixed(2)
+        : '0.00';
+
     return (
-        <Box sx={{ flexGrow: 1, position: 'relative', m: 2, borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
+        <Box sx={{ flexGrow: 1, position: 'relative', m: 1.5, borderRadius: 2, border: `1px solid ${theme.palette.divider}`, display: 'flex', flexDirection: 'column' }}>
+
+            {/* Barra de Status e Legenda Estilo TradingView */}
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                px: 2,
+                py: 0.8,
+                bgcolor: isLightMode ? 'rgba(245, 247, 250, 0.95)' : 'rgba(20, 24, 33, 0.95)',
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                zIndex: 4,
+                fontSize: '0.75rem',
+                fontFamily: 'monospace'
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', fontSize: '0.8rem' }}>
+                        {data.par} ({data.intervalo})
+                    </Typography>
+                    {activeInfo && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>
+                            • {new Date(activeInfo.time * 1000).toLocaleString('pt-BR')}
+                        </Typography>
+                    )}
+                </Box>
+
+                {activeInfo && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
+                        <Typography variant="caption">
+                            <span style={{ color: theme.palette.text.secondary }}>A:</span> <strong>{activeInfo.open.toFixed(2)}</strong>
+                        </Typography>
+                        <Typography variant="caption">
+                            <span style={{ color: theme.palette.text.secondary }}>M:</span> <strong>{activeInfo.high.toFixed(2)}</strong>
+                        </Typography>
+                        <Typography variant="caption">
+                            <span style={{ color: theme.palette.text.secondary }}>B:</span> <strong>{activeInfo.low.toFixed(2)}</strong>
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: priceColor }}>
+                            <span style={{ color: theme.palette.text.secondary }}>F:</span> <strong>{activeInfo.close.toFixed(2)}</strong> ({isBullish ? '+' : ''}{deltaPercent}%)
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            Vol: <strong>{activeInfo.volume.toFixed(2)}</strong>
+                        </Typography>
+                    </Box>
+                )}
+
+                {/* Valores em tempo real dos indicadores ativos naquele candle */}
+                {activeInfo?.indicators && Object.keys(activeInfo.indicators).length > 0 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto', flexWrap: 'wrap' }}>
+                        {Object.entries(activeInfo.indicators).map(([nome, valor], idx) => {
+                            const isOverlay = nome.startsWith('EMA') || nome.startsWith('SMA') || nome.startsWith('BOLLINGER');
+                            const color = LINE_COLORS[idx % LINE_COLORS.length];
+                            return (
+                                <Box
+                                    key={nome}
+                                    sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        px: 0.8,
+                                        py: 0.2,
+                                        borderRadius: 0.8,
+                                        bgcolor: isLightMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)',
+                                        border: `1px solid ${color}40`,
+                                        fontSize: '0.7rem'
+                                    }}
+                                >
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: color }} />
+                                    <span style={{ color: isOverlay ? 'inherit' : color, fontWeight: 'bold' }}>{nome}:</span>
+                                    <span>{valor.toFixed(2)}</span>
+                                </Box>
+                            );
+                        })}
+                    </Box>
+                )}
+            </Box>
+
+            {/* Menu Flutuante de Indicadores Ativos */}
             <Box
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                sx={{ position: 'absolute', top: 10, left: 10, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+                sx={{ position: 'absolute', top: 44, left: 10, zIndex: 6, display: 'flex', flexDirection: 'column', gap: 0.5 }}
             >
                 <Box
                     onClick={() => setIsIndicatorsExpanded(!isIndicatorsExpanded)}
@@ -519,7 +723,7 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
                 </Box>
 
                 {isIndicatorsExpanded && (() => {
-                    const allNames = Object.keys(data.indicadores);
+                    const allNames = Object.keys(validIndicators);
                     const overlays = allNames.filter(nome => nome.startsWith('EMA') || nome.startsWith('SMA') || nome.startsWith('BOLLINGER'));
                     const oscillators = allNames.filter(nome => !nome.startsWith('EMA') && !nome.startsWith('SMA') && !nome.startsWith('BOLLINGER'));
 
@@ -587,10 +791,11 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
                 })()}
             </Box>
 
+            {/* Menu Flutuante de Histórico de Eventos */}
             <Box
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                sx={{ position: 'absolute', top: 10, left: 170, zIndex: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}
+                sx={{ position: 'absolute', top: 44, left: 170, zIndex: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}
             >
                 <Box
                     onClick={() => setIsListOpen(!isListOpen)}
@@ -675,8 +880,9 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
                 )}
             </Box>
 
-            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'hidden' }}>
-                <div ref={setChartContainer} style={{ flexGrow: 1, minHeight: 0 }} />
+            {/* Containers dos Gráficos: Gráfico Principal de Candles + Osciladores */}
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', flexGrow: 1, minHeight: 0, overflowY: 'hidden' }}>
+                <div ref={setChartContainer} style={{ flexGrow: 1, minHeight: 280 }} />
                 {oscillatorOrder.map((nome, index) => {
                     return (
                         <div
@@ -694,6 +900,7 @@ const TradingChart: React.FC<TradingChartProps> = ({ data }) => {
                 })}
             </div>
 
+            {/* Tooltip de Marcadores de Compra/Venda */}
             {tooltipData && (
                 <Paper
                     elevation={12}
